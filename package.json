@@ -1,8 +1,8 @@
 {
   "name": "i18n-data-manager",
   "displayName": "i18n Data Manager",
-  "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations.",
-  "version": "1.0.2",
+  "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
+  "version": "1.1.1",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -12,7 +12,7 @@
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other",
@@ -30,7 +30,9 @@
     "json",
     "language",
     "locale",
-    "i18next"
+    "i18next",
+    "ai",
+    "copilot"
   ],
   "galleryBanner": {
     "color": "#4F46E5",
@@ -94,6 +96,11 @@
           "type": "number",
           "default": 2,
           "description": "Number of spaces used to indent JSON output when writing translation files."
+        },
+        "i18nManager.aiTranslate.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show AI translation buttons in the sidebar. Requires an installed VS Code language model provider (e.g. GitHub Copilot). When no provider is available, the buttons are hidden automatically and the rest of the extension works normally."
         }
       }
     }
@@ -108,7 +115,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
-    "@types/vscode": "^1.75.0",
+    "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vscode/vsce": "^2.24.0",

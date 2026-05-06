@@ -3,7 +3,7 @@
 
   const vscode = acquireVsCodeApi();
 
-  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,flattened:Record<string,string>}>, keys:string[], defaultLanguage:string}} */
+  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,flattened:Record<string,string>}>, keys:string[], defaultLanguage:string, aiAvailable:boolean}} */
   let state = {
     configured: false,
     folderPath: "",
@@ -11,6 +11,7 @@
     languages: [],
     keys: [],
     defaultLanguage: "en",
+    aiAvailable: false,
   };
 
   /**
@@ -77,6 +78,17 @@
       if (v == null || v === "") return false;
     }
     return true;
+  }
+
+  /** True if at least one OTHER language has a value for this key meaning
+   *  there is something to translate FROM. Used to enable the AI button. */
+  function hasAnySource(key, excludeLang) {
+    for (const lang of state.languages) {
+      if (lang.code === excludeLang) continue;
+      const v = lang.flattened[key];
+      if (v != null && v !== "") return true;
+    }
+    return false;
   }
 
   function getFilteredKeys() {
@@ -406,6 +418,7 @@
   }
 
   function renderKeyBody(key) {
+    const ai = state.aiAvailable;
     const rows = state.languages.map((lang) => {
       const value = lang.flattened[key] ?? "";
       const missing = value === "";
@@ -435,6 +448,28 @@
       // Auto-grow on render
       setTimeout(() => autoGrow(ta), 0);
 
+      // ✨ per-language AI translate button only appears when an LM is
+      // available AND at least one OTHER language has a value to translate from.
+      const canTranslate = ai && hasAnySource(key, lang.code);
+      const translateBtn = ai
+        ? el(
+          "button",
+          {
+            class: "btn btn--ai",
+            disabled: !canTranslate,
+            title: canTranslate
+              ? `Translate ${lang.code} from another language using AI`
+              : `Fill in another language first to translate ${lang.code}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              if (!canTranslate) return;
+              send("translateValue", { key, targetLang: lang.code });
+            },
+          },
+          "✨",
+        )
+        : null;
+
       return el("div", { class: "value-row" }, [
         el("div", { class: "value-row__head" }, [
           el(
@@ -447,31 +482,59 @@
             lang.code +
               (lang.code === state.defaultLanguage ? " (default)" : ""),
           ),
+          translateBtn,
         ]),
         ta,
       ]);
     });
 
-    const actions = el("div", { class: "key__actions" }, [
-      el(
+    // ✨ global "translate all" button only if AI available AND something to
+    // translate from AND at least one OTHER language exists.
+    const canTranslateAll =
+      ai && state.languages.length > 1 && hasAnySource(key, null);
+    const translateAllBtn = ai
+      ? el(
         "button",
         {
-          class: "btn btn--ghost",
-          title: "Rename key",
-          onClick: () => openRenameKeyModal(key),
+          class: "btn btn--ghost btn--ai-all",
+          disabled: !canTranslateAll,
+          title: canTranslateAll
+            ? "Translate this key into every other language using AI"
+            : "Fill in at least one language with a value to enable AI translation",
+          onClick: () => {
+            if (!canTranslateAll) return;
+            send("translateKey", { key });
+          },
         },
-        "Rename",
-      ),
-      el(
-        "button",
-        {
-          class: "btn btn--ghost btn--danger",
-          title: "Delete key from all languages",
-          onClick: () => send("deleteKey", { key }),
-        },
-        "Delete",
-      ),
-    ]);
+        "✨ Translate all",
+      )
+      : null;
+
+    const actions = el(
+      "div",
+      { class: "key__actions" },
+      [
+        translateAllBtn,
+        el(
+          "button",
+          {
+            class: "btn btn--ghost",
+            title: "Rename key",
+            onClick: () => openRenameKeyModal(key),
+          },
+          "Rename",
+        ),
+        el(
+          "button",
+          {
+            class: "btn btn--ghost btn--danger",
+            title: "Delete key from all languages",
+            onClick: () => send("deleteKey", { key }),
+          },
+          "Delete",
+        ),
+      ].filter(Boolean),
+    );
 
     return el("div", { class: "key__body" }, [...rows, actions]);
   }

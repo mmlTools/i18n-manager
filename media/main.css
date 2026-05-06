@@ -37,6 +37,11 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 input,
 textarea,
 select {
@@ -278,6 +283,32 @@ label {
   background: var(--vscode-inputValidation-errorBackground, var(--vscode-list-hoverBackground));
 }
 
+/* AI translate button next to each language row small, sparkle-only. */
+.btn--ai {
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+.btn--ai:not(:disabled):hover {
+  opacity: 1;
+  color: var(--vscode-foreground);
+  background: var(--vscode-list-hoverBackground);
+}
+.btn--ai:disabled:hover {
+  background: transparent;
+}
+
+/* AI translate-all button in the key actions row slightly more visible. */
+.btn--ai-all {
+  color: var(--vscode-textLink-foreground, var(--vscode-foreground));
+}
+.btn--ai-all:not(:disabled):hover {
+  color: var(--vscode-textLink-activeForeground, var(--vscode-foreground));
+  background: var(--vscode-list-hoverBackground);
+}
+
 /* ─── Keys list ────────────────────────────────────────────── */
 
 .keys {
@@ -350,6 +381,7 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 4px;
 }
 .value-row__lang {
   font-size: 11px;
@@ -377,6 +409,7 @@ label {
   gap: 4px;
   margin-top: 4px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 /* ─── Modal ────────────────────────────────────────────────── */

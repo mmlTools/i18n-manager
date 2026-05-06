@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-06
+
+### Added
+
+- **AI translation via the VS Code Language Model API.** Works with GitHub Copilot or any other installed LM provider, no API key required, no provider locked in.
+  - Per-language ✨ button next to each language inside an expanded translation key. Click it to pick a source language and translate that single value.
+  - Global **✨ Translate all** button in the key's actions row. Pick a source language and the key is translated into every other language at once.
+  - When some target languages already have a value, you're prompted to either overwrite all of them or only fill the empty ones.
+  - Cancellable progress notifications during translation.
+  - Placeholder, HTML, and ICU MessageFormat preservation built into the prompt.
+- New setting `i18nManager.aiTranslate.enabled` (default `true`) to disable AI buttons even when a model is available.
+- Sidebar now refreshes automatically when extensions are installed/uninstalled, so the AI buttons appear the moment a provider is added.
+
+### Changed
+
+- Bumped minimum VS Code version from `1.75.0` to `1.90.0` (required for the stable Language Model API).
+- The extension is fully functional without any LM provider, the AI buttons simply don't render, and every existing feature works exactly as it did before.
+
 ## [1.0.0] - 2026-05-06
 
 ### Added
@@ -27,5 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File-system watcher that refreshes the sidebar on external file changes.
 - Configurable JSON indentation, default language, and translations path.
 
-[Unreleased]: https://github.com/mmlTools/i18n-manager/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/mmlTools/i18n-manager/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/mmlTools/i18n-manager/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mmlTools/i18n-manager/releases/tag/v1.0.0
