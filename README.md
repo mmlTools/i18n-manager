@@ -1,8 +1,8 @@
 # i18n Data Manager
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/MMLTECH.i18n-data-manager?label=Marketplace)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/MMLTECH.i18n-data-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/MMLTECH.i18n-data-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
+[![Marketplace](https://img.shields.io/badge/VS%20Marketplace-i18n%20Data%20Manager-blue)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A clean, sidebar-based control panel for managing your i18n translation files.
