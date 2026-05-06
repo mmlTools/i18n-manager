@@ -1,8 +1,8 @@
 {
-  "name": "i18n-data-manager",
-  "displayName": "i18n Data Manager",
+  "name": "localesync-i18n",
+  "displayName": "LocaleSync: i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -12,10 +12,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mmlTools/i18n-manager.git"
+    "url": "https://github.com/mmlTools/localesync-i18n.git"
   },
   "bugs": {
-    "url": "https://github.com/mmlTools/i18n-manager/issues"
+    "url": "https://github.com/mmlTools/localesync-i18n/issues"
   },
   "icon": "media/icon.png",
   "engines": {
@@ -54,16 +54,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "i18n-data-manager",
+          "id": "localesync-i18n",
           "title": "i18n Data Manager",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "i18n-data-manager": [
+      "localesync-i18n": [
         {
-          "id": "i18nDataManagerSidebar",
+          "id": "LocaleSynci18nSidebar",
           "name": "Translations",
           "type": "webview"
         }
@@ -71,33 +71,33 @@
     },
     "commands": [
       {
-        "command": "i18nDataManager.configureFolder",
+        "command": "LocaleSynci18n.configureFolder",
         "title": "i18n Data Manager: Configure Translations Folder"
       },
       {
-        "command": "i18nDataManager.refresh",
+        "command": "LocaleSynci18n.refresh",
         "title": "i18n Data Manager: Refresh"
       }
     ],
     "configuration": {
       "title": "i18n Data Manager",
       "properties": {
-        "i18nDataManager.translationsPath": {
+        "LocaleSynci18n.translationsPath": {
           "type": "string",
           "default": "",
           "description": "Path to the folder containing translation .json files (relative to the workspace root or absolute)."
         },
-        "i18nDataManager.defaultLanguage": {
+        "LocaleSynci18n.defaultLanguage": {
           "type": "string",
           "default": "en",
           "description": "The default / source language code (filename without extension). It will be shown first."
         },
-        "i18nDataManager.indent": {
+        "LocaleSynci18n.indent": {
           "type": "number",
           "default": 2,
           "description": "Number of spaces used to indent JSON output when writing translation files."
         },
-        "i18nDataManager.aiTranslate.enabled": {
+        "LocaleSynci18n.aiTranslate.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Show AI translation buttons in the sidebar. Requires an installed VS Code language model provider (e.g. GitHub Copilot). When no provider is available, the buttons are hidden automatically and the rest of the extension works normally."

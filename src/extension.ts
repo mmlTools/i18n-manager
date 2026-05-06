@@ -12,7 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      "i18nDataManagerSidebar",
+      "LocaleSynci18nSidebar",
       sidebarProvider,
       {
         webviewOptions: { retainContextWhenHidden: true },
@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Refresh when configuration changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("i18nDataManager")) {
+      if (e.affectsConfiguration("LocaleSynci18n")) {
         sidebarProvider.refresh();
       }
     }),
@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
   setupWatcher();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("i18nDataManager.translationsPath")) {
+      if (e.affectsConfiguration("LocaleSynci18n.translationsPath")) {
         setupWatcher();
       }
     }),
@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Commands
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "i18nDataManager.configureFolder",
+      "LocaleSynci18n.configureFolder",
       async () => {
         const ws = vscode.workspace.workspaceFolders?.[0];
         if (!ws) {
@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
           toSave = path.relative(wsPath, absolute) || ".";
         }
         await vscode.workspace
-          .getConfiguration("i18nDataManager")
+          .getConfiguration("LocaleSynci18n")
           .update(
             "translationsPath",
             toSave,
@@ -97,7 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("i18nDataManager.refresh", () =>
+    vscode.commands.registerCommand("LocaleSynci18n.refresh", () =>
       sidebarProvider.refresh(),
     ),
   );

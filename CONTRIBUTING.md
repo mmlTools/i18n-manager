@@ -6,8 +6,8 @@ small set of conventions used in this codebase.
 ## Dev setup
 
 ```bash
-git clone https://github.com/mmlTools/i18n-data-manager.git
-cd i18n-data-manager
+git clone https://github.com/mmlTools/localesync-i18n.git
+cd localesync-i18n
 npm install
 ```
 
@@ -57,13 +57,13 @@ npm run lint      # ESLint over src/
 
 ```bash
 npm install -g @vscode/vsce
-npm run package   # produces i18n-data-manager-X.Y.Z.vsix
+npm run package   # produces localesync-i18n-X.Y.Z.vsix
 ```
 
 Install the resulting `.vsix` into your normal VS Code with:
 
 ```bash
-code --install-extension i18n-data-manager-X.Y.Z.vsix
+code --install-extension localesync-i18n-X.Y.Z.vsix
 ```
 
 ## Pull requests

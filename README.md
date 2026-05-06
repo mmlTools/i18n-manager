@@ -1,6 +1,6 @@
-# i18n Data Manager
+# LocaleSync: i18n Data Manager
 
-[![Marketplace](https://img.shields.io/badge/VS%20Marketplace-i18n%20Data%20Manager-blue)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
+[![Marketplace](https://img.shields.io/badge/VS%20Marketplace-i18n%20Data%20Manager-blue)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.localesync-i18n)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -26,15 +26,12 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 
 ## 📸 Preview
 
->
-> ```markdown
-> ![Sidebar overview](images/sidebar.png)
-> ![Add key dialog](images/add-key.png)
-> ```
+![Sidebar overview](images/sidebar.png)
+![Add key dialog](images/add-key.png)
 
 ## Getting started
 
-1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager).
+1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MMLTECH.localesync-i18n).
 2. Open a workspace that contains your translation files.
 3. Click the 🌐 **i18n Data Manager** icon in the activity bar.
 4. Click **Choose Translations Folder** and pick the folder containing your `en.json`, `fr.json`, etc.
@@ -57,7 +54,7 @@ Notes:
 - The extension uses the [VS Code Language Model API](https://code.visualstudio.com/api/extension-guides/language-model). Your prompts go to whichever provider you have installed, Anthropic isn't called directly, no API key is shipped, and the user (you) authorizes usage on first run.
 - The buttons **only appear when a model is reachable**. If you don't have an LM provider, the extension works exactly as before, no buttons, no errors.
 - Placeholders (`{name}`, `{{count}}`, `%s`, `%d`, ICU plurals, HTML tags) are preserved by the prompt. Always review machine translations before shipping, especially for shorter keys where context can be ambiguous.
-- You can disable the AI buttons entirely via the `i18nDataManager.aiTranslate.enabled` setting, even when a model is available.
+- You can disable the AI buttons entirely via the `LocaleSynci18n.aiTranslate.enabled` setting, even when a model is available.
 
 ## Expected file layout
 
@@ -87,10 +84,10 @@ preserving your existing structure.
 
 | Setting                              | Description                                                                                                                | Default |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `i18nDataManager.translationsPath`       | Folder containing your `*.json` translation files (relative or abs.).                                                       | `""`    |
-| `i18nDataManager.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
-| `i18nDataManager.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
-| `i18nDataManager.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
+| `LocaleSynci18n.translationsPath`       | Folder containing your `*.json` translation files (relative or abs.).                                                       | `""`    |
+| `LocaleSynci18n.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
+| `LocaleSynci18n.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
+| `LocaleSynci18n.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
 
 These settings are written to your **workspace** settings, so each project can have its own config.
 
@@ -104,8 +101,8 @@ Available from the Command Palette (`Ctrl/Cmd+Shift+P`):
 ## Build from source
 
 ```bash
-git clone https://github.com/mmlTools/i18n-data-manager.git
-cd i18n-data-manager
+git clone https://github.com/mmlTools/localesync-i18n.git
+cd localesync-i18n
 npm install
 npm run compile
 ```
@@ -118,7 +115,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev workflow.
 
 ```bash
 npm install -g @vscode/vsce
-npm run package        # → i18n-data-manager-1.1.0.vsix
+npm run package        # → localesync-i18n-1.1.0.vsix
 npm run publish        # publishes to the marketplace (requires `vsce login`)
 ```
 

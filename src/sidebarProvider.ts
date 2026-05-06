@@ -69,7 +69,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               break;
             case "configure":
               await vscode.commands.executeCommand(
-                "i18nDataManager.configureFolder",
+                "LocaleSynci18n.configureFolder",
               );
               break;
             case "addKey":

@@ -21,7 +21,7 @@ export interface I18nState {
 
 export class I18nService {
   resolveFolderPath(): string | undefined {
-    const config = vscode.workspace.getConfiguration("i18nDataManager");
+    const config = vscode.workspace.getConfiguration("LocaleSynci18n");
     const setting = (config.get<string>("translationsPath") || "").trim();
     if (!setting) return undefined;
     if (path.isAbsolute(setting)) return setting;
@@ -33,14 +33,14 @@ export class I18nService {
   getDefaultLanguage(): string {
     return (
       vscode.workspace
-        .getConfiguration("i18nDataManager")
+        .getConfiguration("LocaleSynci18n")
         .get<string>("defaultLanguage") || "en"
     );
   }
 
   getIndent(): number {
     const n = vscode.workspace
-      .getConfiguration("i18nDataManager")
+      .getConfiguration("LocaleSynci18n")
       .get<number>("indent");
     return typeof n === "number" && n >= 0 ? n : 2;
   }
@@ -55,7 +55,7 @@ export class I18nService {
    */
   async isLanguageModelAvailable(): Promise<boolean> {
     const enabled = vscode.workspace
-      .getConfiguration("i18nDataManager")
+      .getConfiguration("LocaleSynci18n")
       .get<boolean>("aiTranslate.enabled", true);
     if (!enabled) return false;
     try {
