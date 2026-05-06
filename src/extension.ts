@@ -12,7 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      "i18nManagerSidebar",
+      "i18nDataManagerSidebar",
       sidebarProvider,
       {
         webviewOptions: { retainContextWhenHidden: true },
@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Refresh when configuration changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("i18nManager")) {
+      if (e.affectsConfiguration("i18nDataManager")) {
         sidebarProvider.refresh();
       }
     }),
@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
   setupWatcher();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("i18nManager.translationsPath")) {
+      if (e.affectsConfiguration("i18nDataManager.translationsPath")) {
         setupWatcher();
       }
     }),
@@ -61,40 +61,43 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Commands
   context.subscriptions.push(
-    vscode.commands.registerCommand("i18nManager.configureFolder", async () => {
-      const ws = vscode.workspace.workspaceFolders?.[0];
-      if (!ws) {
-        vscode.window.showErrorMessage("Open a workspace first.");
-        return;
-      }
-      const picked = await vscode.window.showOpenDialog({
-        canSelectFolders: true,
-        canSelectFiles: false,
-        canSelectMany: false,
-        defaultUri: ws.uri,
-        openLabel: "Select Translations Folder",
-      });
-      if (!picked || picked.length === 0) return;
-      const absolute = picked[0].fsPath;
-      let toSave = absolute;
-      const wsPath = ws.uri.fsPath;
-      if (absolute.startsWith(wsPath)) {
-        toSave = path.relative(wsPath, absolute) || ".";
-      }
-      await vscode.workspace
-        .getConfiguration("i18nManager")
-        .update(
-          "translationsPath",
-          toSave,
-          vscode.ConfigurationTarget.Workspace,
-        );
-      sidebarProvider.refresh();
-      setupWatcher();
-    }),
+    vscode.commands.registerCommand(
+      "i18nDataManager.configureFolder",
+      async () => {
+        const ws = vscode.workspace.workspaceFolders?.[0];
+        if (!ws) {
+          vscode.window.showErrorMessage("Open a workspace first.");
+          return;
+        }
+        const picked = await vscode.window.showOpenDialog({
+          canSelectFolders: true,
+          canSelectFiles: false,
+          canSelectMany: false,
+          defaultUri: ws.uri,
+          openLabel: "Select Translations Folder",
+        });
+        if (!picked || picked.length === 0) return;
+        const absolute = picked[0].fsPath;
+        let toSave = absolute;
+        const wsPath = ws.uri.fsPath;
+        if (absolute.startsWith(wsPath)) {
+          toSave = path.relative(wsPath, absolute) || ".";
+        }
+        await vscode.workspace
+          .getConfiguration("i18nDataManager")
+          .update(
+            "translationsPath",
+            toSave,
+            vscode.ConfigurationTarget.Workspace,
+          );
+        sidebarProvider.refresh();
+        setupWatcher();
+      },
+    ),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("i18nManager.refresh", () =>
+    vscode.commands.registerCommand("i18nDataManager.refresh", () =>
       sidebarProvider.refresh(),
     ),
   );

@@ -69,7 +69,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               break;
             case "configure":
               await vscode.commands.executeCommand(
-                "i18nManager.configureFolder",
+                "i18nDataManager.configureFolder",
               );
               break;
             case "addKey":
@@ -283,7 +283,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
-          vscode.window.showErrorMessage(`i18n Manager: ${msg}`);
+          vscode.window.showErrorMessage(`i18n Data Manager: ${msg}`);
         }
       },
     );
@@ -305,7 +305,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${styleUri}" rel="stylesheet" />
-  <title>i18n Manager</title>
+  <title>i18n Data Manager</title>
 </head>
 <body>
   <div id="app"></div>

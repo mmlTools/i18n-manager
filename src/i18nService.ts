@@ -21,7 +21,7 @@ export interface I18nState {
 
 export class I18nService {
   resolveFolderPath(): string | undefined {
-    const config = vscode.workspace.getConfiguration("i18nManager");
+    const config = vscode.workspace.getConfiguration("i18nDataManager");
     const setting = (config.get<string>("translationsPath") || "").trim();
     if (!setting) return undefined;
     if (path.isAbsolute(setting)) return setting;
@@ -33,14 +33,14 @@ export class I18nService {
   getDefaultLanguage(): string {
     return (
       vscode.workspace
-        .getConfiguration("i18nManager")
+        .getConfiguration("i18nDataManager")
         .get<string>("defaultLanguage") || "en"
     );
   }
 
   getIndent(): number {
     const n = vscode.workspace
-      .getConfiguration("i18nManager")
+      .getConfiguration("i18nDataManager")
       .get<number>("indent");
     return typeof n === "number" && n >= 0 ? n : 2;
   }
@@ -55,7 +55,7 @@ export class I18nService {
    */
   async isLanguageModelAvailable(): Promise<boolean> {
     const enabled = vscode.workspace
-      .getConfiguration("i18nManager")
+      .getConfiguration("i18nDataManager")
       .get<boolean>("aiTranslate.enabled", true);
     if (!enabled) return false;
     try {
@@ -281,7 +281,11 @@ export class I18nService {
           flattened: this.flatten(data),
         });
       } catch (e) {
-        console.error(`i18n Manager: failed to read ${file}`, e);
+        process.stderr.write(
+          `i18n Data Manager: failed to read ${file}: ${
+            e instanceof Error ? (e.stack ?? e.message) : String(e)
+          }\n`,
+        );
       }
     }
 

@@ -39,7 +39,7 @@
       state = msg.payload;
       render();
     } else if (msg.type === "error") {
-      console.error("[i18n Manager]", msg.payload);
+      console.error("[i18n Data Manager]", msg.payload);
     }
   });
 

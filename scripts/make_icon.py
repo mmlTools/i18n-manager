@@ -1,4 +1,4 @@
-"""Generate a 256×256 PNG icon for the i18n Manager marketplace listing."""
+"""Generate a 256×256 PNG icon for the i18n Data Manager marketplace listing."""
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 

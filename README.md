@@ -1,8 +1,8 @@
-# i18n Manager
+# i18n Data Manager
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/MMLTECH.i18n-manager?label=Marketplace)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-manager)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/MMLTECH.i18n-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-manager)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/MMLTECH.i18n-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-manager)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/MMLTECH.i18n-data-manager?label=Marketplace)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/MMLTECH.i18n-data-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/MMLTECH.i18n-data-manager)](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A clean, sidebar-based control panel for managing your i18n translation files.
@@ -34,9 +34,9 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 
 ## Getting started
 
-1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-manager).
+1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MMLTECH.i18n-data-manager).
 2. Open a workspace that contains your translation files.
-3. Click the 🌐 **i18n Manager** icon in the activity bar.
+3. Click the 🌐 **i18n Data Manager** icon in the activity bar.
 4. Click **Choose Translations Folder** and pick the folder containing your `en.json`, `fr.json`, etc.
 5. Done, start adding keys and languages from the sidebar.
 
@@ -57,7 +57,7 @@ Notes:
 - The extension uses the [VS Code Language Model API](https://code.visualstudio.com/api/extension-guides/language-model). Your prompts go to whichever provider you have installed, Anthropic isn't called directly, no API key is shipped, and the user (you) authorizes usage on first run.
 - The buttons **only appear when a model is reachable**. If you don't have an LM provider, the extension works exactly as before, no buttons, no errors.
 - Placeholders (`{name}`, `{{count}}`, `%s`, `%d`, ICU plurals, HTML tags) are preserved by the prompt. Always review machine translations before shipping, especially for shorter keys where context can be ambiguous.
-- You can disable the AI buttons entirely via the `i18nManager.aiTranslate.enabled` setting, even when a model is available.
+- You can disable the AI buttons entirely via the `i18nDataManager.aiTranslate.enabled` setting, even when a model is available.
 
 ## Expected file layout
 
@@ -87,10 +87,10 @@ preserving your existing structure.
 
 | Setting                              | Description                                                                                                                | Default |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `i18nManager.translationsPath`       | Folder containing your `*.json` translation files (relative or abs.).                                                       | `""`    |
-| `i18nManager.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
-| `i18nManager.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
-| `i18nManager.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
+| `i18nDataManager.translationsPath`       | Folder containing your `*.json` translation files (relative or abs.).                                                       | `""`    |
+| `i18nDataManager.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
+| `i18nDataManager.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
+| `i18nDataManager.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
 
 These settings are written to your **workspace** settings, so each project can have its own config.
 
@@ -98,14 +98,14 @@ These settings are written to your **workspace** settings, so each project can h
 
 Available from the Command Palette (`Ctrl/Cmd+Shift+P`):
 
-- `i18n Manager: Configure Translations Folder`
-- `i18n Manager: Refresh`
+- `i18n Data Manager: Configure Translations Folder`
+- `i18n Data Manager: Refresh`
 
 ## Build from source
 
 ```bash
-git clone https://github.com/mmlTools/i18n-manager.git
-cd i18n-manager
+git clone https://github.com/mmlTools/i18n-data-manager.git
+cd i18n-data-manager
 npm install
 npm run compile
 ```
@@ -118,7 +118,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full dev workflow.
 
 ```bash
 npm install -g @vscode/vsce
-npm run package        # → i18n-manager-1.1.0.vsix
+npm run package        # → i18n-data-manager-1.1.0.vsix
 npm run publish        # publishes to the marketplace (requires `vsce login`)
 ```
 

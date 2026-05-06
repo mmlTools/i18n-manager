@@ -2,7 +2,7 @@
   "name": "i18n-data-manager",
   "displayName": "i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -10,6 +10,13 @@
     "url": "https://paypal.me/mmltools"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmlTools/i18n-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mmlTools/i18n-manager/issues"
+  },
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.90.0"
@@ -38,13 +45,6 @@
     "color": "#4F46E5",
     "theme": "dark"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/mmlTools/i18n-manager.git"
-  },
-  "bugs": {
-    "url": "https://github.com/mmlTools/i18n-manager/issues"
-  },
   "qna": "marketplace",
   "activationEvents": [
     "onStartupFinished"
@@ -54,16 +54,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "i18n-manager",
-          "title": "i18n Manager",
+          "id": "i18n-data-manager",
+          "title": "i18n Data Manager",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "i18n-manager": [
+      "i18n-data-manager": [
         {
-          "id": "i18nManagerSidebar",
+          "id": "i18nDataManagerSidebar",
           "name": "Translations",
           "type": "webview"
         }
@@ -71,33 +71,33 @@
     },
     "commands": [
       {
-        "command": "i18nManager.configureFolder",
-        "title": "i18n Manager: Configure Translations Folder"
+        "command": "i18nDataManager.configureFolder",
+        "title": "i18n Data Manager: Configure Translations Folder"
       },
       {
-        "command": "i18nManager.refresh",
-        "title": "i18n Manager: Refresh"
+        "command": "i18nDataManager.refresh",
+        "title": "i18n Data Manager: Refresh"
       }
     ],
     "configuration": {
-      "title": "i18n Manager",
+      "title": "i18n Data Manager",
       "properties": {
-        "i18nManager.translationsPath": {
+        "i18nDataManager.translationsPath": {
           "type": "string",
           "default": "",
           "description": "Path to the folder containing translation .json files (relative to the workspace root or absolute)."
         },
-        "i18nManager.defaultLanguage": {
+        "i18nDataManager.defaultLanguage": {
           "type": "string",
           "default": "en",
           "description": "The default / source language code (filename without extension). It will be shown first."
         },
-        "i18nManager.indent": {
+        "i18nDataManager.indent": {
           "type": "number",
           "default": 2,
           "description": "Number of spaces used to indent JSON output when writing translation files."
         },
-        "i18nManager.aiTranslate.enabled": {
+        "i18nDataManager.aiTranslate.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Show AI translation buttons in the sidebar. Requires an installed VS Code language model provider (e.g. GitHub Copilot). When no provider is available, the buttons are hidden automatically and the rest of the extension works normally."
@@ -114,7 +114,7 @@
     "publish": "vsce publish"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@types/node": "^18.19.130",
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",

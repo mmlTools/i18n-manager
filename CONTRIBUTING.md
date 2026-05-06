@@ -1,4 +1,4 @@
-# Contributing to i18n Manager
+# Contributing to i18n Data Manager
 
 Thanks for your interest in contributing! This document covers the dev setup and the
 small set of conventions used in this codebase.
@@ -6,8 +6,8 @@ small set of conventions used in this codebase.
 ## Dev setup
 
 ```bash
-git clone https://github.com/mmlTools/i18n-manager.git
-cd i18n-manager
+git clone https://github.com/mmlTools/i18n-data-manager.git
+cd i18n-data-manager
 npm install
 ```
 
@@ -57,13 +57,13 @@ npm run lint      # ESLint over src/
 
 ```bash
 npm install -g @vscode/vsce
-npm run package   # produces i18n-manager-X.Y.Z.vsix
+npm run package   # produces i18n-data-manager-X.Y.Z.vsix
 ```
 
 Install the resulting `.vsix` into your normal VS Code with:
 
 ```bash
-code --install-extension i18n-manager-X.Y.Z.vsix
+code --install-extension i18n-data-manager-X.Y.Z.vsix
 ```
 
 ## Pull requests
