@@ -1,0 +1,112 @@
+{
+  "name": "i18n-manager",
+  "displayName": "i18n Manager",
+  "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations.",
+  "version": "1.0.1",
+  "publisher": "MMLTECH",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "localization",
+    "l10n",
+    "translation",
+    "translations",
+    "json",
+    "language",
+    "locale",
+    "i18next"
+  ],
+  "galleryBanner": {
+    "color": "#4F46E5",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/mmlTools/i18n-manager#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mmlTools/i18n-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mmlTools/i18n-manager/issues"
+  },
+  "qna": "marketplace",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "i18n-manager",
+          "title": "i18n Manager",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "i18n-manager": [
+        {
+          "id": "i18nManagerSidebar",
+          "name": "Translations",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "i18nManager.configureFolder",
+        "title": "i18n Manager: Configure Translations Folder"
+      },
+      {
+        "command": "i18nManager.refresh",
+        "title": "i18n Manager: Refresh"
+      }
+    ],
+    "configuration": {
+      "title": "i18n Manager",
+      "properties": {
+        "i18nManager.translationsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the folder containing translation .json files (relative to the workspace root or absolute)."
+        },
+        "i18nManager.defaultLanguage": {
+          "type": "string",
+          "default": "en",
+          "description": "The default / source language code (filename without extension). It will be shown first."
+        },
+        "i18nManager.indent": {
+          "type": "number",
+          "default": 2,
+          "description": "Number of spaces used to indent JSON output when writing translation files."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/vsce": "^2.24.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.0"
+  }
+}
