@@ -1,9 +1,14 @@
 {
-  "name": "i18n-manager",
-  "displayName": "i18n Manager",
+  "name": "i18n-data-manager",
+  "displayName": "i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "MMLTECH",
+  "homepage": "https://streamrsc.com",
+  "pricing": "Free",
+  "sponsor": {
+    "url": "https://paypal.me/mmltools"
+  },
   "license": "MIT",
   "icon": "media/icon.png",
   "engines": {
@@ -31,7 +36,6 @@
     "color": "#4F46E5",
     "theme": "dark"
   },
-  "homepage": "https://github.com/mmlTools/i18n-manager#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/mmlTools/i18n-manager.git"
