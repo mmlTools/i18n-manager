@@ -107,17 +107,62 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               );
               await this.sendState();
               break;
-            case "addLanguage":
-              await this._service.addLanguage(
-                data.payload.code,
-                data.payload.copyFrom,
-              );
+            case "addLanguage": {
+              const code: string = data.payload.code;
+              const copyFrom: string | undefined = data.payload.copyFrom;
+              const autoTranslate: boolean = !!data.payload.autoTranslate;
+              await this._service.addLanguage(code, copyFrom);
               await this.sendState();
               vscode.window.setStatusBarMessage(
-                `i18n: created "${data.payload.code}.json"`,
+                `i18n: created "${code}.json"`,
                 3000,
               );
+
+              if (autoTranslate) {
+                const state = await this._service.loadState();
+                if (!state.aiAvailable) {
+                  vscode.window.showWarningMessage(
+                    "Auto-translate skipped: no AI provider available. Install GitHub Copilot (or another VS Code language model provider) and try again.",
+                  );
+                  break;
+                }
+                const sourceLang =
+                  copyFrom ||
+                  state.defaultLanguage ||
+                  state.languages.find((l) => l.code !== code)?.code;
+                if (!sourceLang || sourceLang === code) {
+                  vscode.window.showWarningMessage(
+                    "Auto-translate skipped: no source language available.",
+                  );
+                  break;
+                }
+                const result = await vscode.window.withProgress(
+                  {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Auto-translating "${code}" from ${sourceLang}…`,
+                    cancellable: true,
+                  },
+                  async (progress, token) =>
+                    this._service.translateLanguageFile(
+                      code,
+                      sourceLang,
+                      { overwrite: true },
+                      token,
+                      progress,
+                    ),
+                );
+                await this.sendState();
+                const parts = [
+                  `Auto-translated ${result.translated} key${result.translated === 1 ? "" : "s"} into "${code}"`,
+                ];
+                if (result.skipped > 0)
+                  parts.push(`skipped ${result.skipped}`);
+                if (result.failed > 0)
+                  parts.push(`${result.failed} failed`);
+                vscode.window.showInformationMessage(parts.join(", ") + ".");
+              }
               break;
+            }
             case "deleteLanguage": {
               const confirm = await vscode.window.showWarningMessage(
                 `Delete language file "${data.payload.code}.json"? This cannot be undone.`,

@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-07
+
+### Changed
+
+- **`LocaleSynci18n.keyInsertTemplate` now defaults to `${key}`** — i.e. the selection is replaced with the bare key path, with no `t('…')` wrapper. The previous default assumed an `i18next`-style helper that's a project-local convention; users that want a wrapper can set the template explicitly (e.g. `"t('${key}')"`, `"$t('${key}')"`, or any other shape).
+- README and CHANGELOG references to `t('your.key')` updated to reflect the new default.
+
+## [1.4.0] - 2026-05-07
+
+### Added
+
+- **"Create Translation Key from Selection (AI)" command.** Select any free-form text in your editor, right-click and pick **i18n: Create Translation Key from Selection (AI)** (also in the Command Palette). The extension:
+  - Asks for the source language (defaults to your default language).
+  - Sends the selection to the language model with the project's existing top-level groups as context, and gets back a nicely-nested key path such as `fixes.redundantText` for *"Fixed the card files uploads by removing the redundant webkit building"*.
+  - Sanitises the reply (lowerCamelCase segments, dot notation, ASCII-only, length-capped) and ensures uniqueness against existing keys.
+  - Lets you accept or tweak the suggested key in an input box (with the last segment pre-selected for fast renaming).
+  - Creates the key with the selection as the source value, then translates it into every other language using the existing `translateKeyToAll` flow.
+  - Replaces the selection with the configured `LocaleSynci18n.keyInsertTemplate` (the key path).
+- New `I18nService.suggestKeyPath(text, { existingKeys, sourceLang })` and `sanitizeKeyPath(raw)` helpers powering the suggestion flow.
+
+## [1.3.0] - 2026-05-07
+
+### Added
+
+- **Translate Selection now recognises key paths.** When the selected text is itself an existing key (e.g. `comp.externalsTable.accessCategoryTypeNameHeader`), the QuickPick clearly shows that the translation already exists and lists every language's value as a preview.
+- **Sibling-key suggestions.** Whatever the selection, the QuickPick also shows existing keys whose **last segment** matches (e.g. picking `accessCategoryTypeNameHeader` surfaces every key ending in `.accessCategoryTypeNameHeader`), so you can reuse a related entry instead of creating a new one.
+- **Smart pre-fill in the Create flow.** When the selection looks like a key path, the *new key* input is pre-filled with it; otherwise the *source value* input is pre-filled with the selection. The flow now asks for key → source language → source value (each pre-filled where it makes sense).
+- **Sectioned QuickPick** with separators for *Existing translations*, *Same value as the selection*, and *Other keys ending in ".…"* so the choices are easy to scan.
+
+### Changed
+
+- **Auto-translate of new language files is now batched.** Instead of one round-trip per key, values are sent to the language model in chunks (~50 keys / ~6000 chars per request) as a JSON object and parsed back, which is dramatically faster on large files.
+  - If a batch reply can't be parsed, the affected entries automatically fall back to per-key translation so a single bad reply never aborts the job.
+  - Progress notifications now report `batch i/n (N keys)` instead of one tick per key.
+
+## [1.2.0] - 2026-05-07
+
+### Added
+
+- **Translate Selection from the editor.** Select any string in your code, right-click and pick **i18n: Translate Selection…** (also available from the Command Palette).
+  - Searches every language's values for matches and offers to **reuse an existing key** when one is found (exact and case-insensitive matches, with the matching value previewed).
+  - Otherwise lets you **create a new key on the fly**: pick the source language, name the key (validated against duplicates), and the selected text is stored as the source value.
+  - When a language model is available, optionally translates the new key into every other language right away (reuses the existing `translateKeyToAll` flow with progress + cancellation).
+  - The selection in your code is replaced according to the new `LocaleSynci18n.keyInsertTemplate` setting (uses `${key}` as a placeholder).
+- **Auto-translate when creating a new language file.** The *Add Language* dialog now has an **Auto-translate values with AI** checkbox (shown when a model is available). When checked, every key is translated from the chosen source language right after the file is created, with cancellable progress and a summary toast.
+- New setting `LocaleSynci18n.keyInsertTemplate` to control how the editor selection is rewritten after the *Translate Selection* command.
+- New command contribution `LocaleSynci18n.translateSelection`, registered in the editor context menu.
+
+### Internal
+
+- `I18nService.findKeysByValue(text)` returns existing keys whose value matches the given text (exact matches first, then case-insensitive).
+- `I18nService.translateLanguageFile(target, source, { overwrite }, token, progress)` translates every key of a target language file from a source language, tolerating individual failures and reporting `translated / skipped / failed` counts.
+
 ## [1.1.0] - 2026-05-06
 
 ### Added
@@ -45,6 +98,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File-system watcher that refreshes the sidebar on external file changes.
 - Configurable JSON indentation, default language, and translations path.
 
-[Unreleased]: https://github.com/mmlTools/localesync-i18n/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/mmlTools/localesync-i18n/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/mmlTools/localesync-i18n/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/mmlTools/localesync-i18n/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/mmlTools/localesync-i18n/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/mmlTools/localesync-i18n/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/mmlTools/localesync-i18n/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mmlTools/localesync-i18n/releases/tag/v1.0.0

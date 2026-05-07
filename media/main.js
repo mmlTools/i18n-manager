@@ -563,6 +563,7 @@
           state.defaultLanguage ||
           (state.languages[0] && state.languages[0].code) ||
           "",
+        autoTranslate: state.aiAvailable ? "1" : "",
       },
     };
     render();
@@ -625,7 +626,11 @@
           render();
           return;
         }
-        send("addLanguage", { code, copyFrom: m.fields.copyFrom || undefined });
+        send("addLanguage", {
+          code,
+          copyFrom: m.fields.copyFrom || undefined,
+          autoTranslate: !!m.fields.autoTranslate,
+        });
         closeModal();
       };
     } else {
@@ -804,6 +809,25 @@
                 "div",
                 { class: "field-help" },
                 "Keys are copied with empty values, ready to translate.",
+              ),
+            ])
+          : null,
+        state.languages.length > 0 && state.aiAvailable
+          ? el("div", { class: "field-group" }, [
+              el("label", { class: "checkbox" }, [
+                el("input", {
+                  type: "checkbox",
+                  checked: !!m.fields.autoTranslate,
+                  onchange: (e) => {
+                    m.fields.autoTranslate = e.target.checked ? "1" : "";
+                  },
+                }),
+                " Auto-translate values with AI",
+              ]),
+              el(
+                "div",
+                { class: "field-help" },
+                "Uses your VS Code language model (e.g. GitHub Copilot) to translate every value from the selected source language.",
               ),
             ])
           : null,

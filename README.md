@@ -10,6 +10,12 @@ Add new keys to **every language file at once**, create new language files in a 
 spot missing translations at a glance, and translate them with a single click using
 GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 
+<p align="center">
+  <a href="https://youtu.be/K5xDWOrtAsA">
+    <img src="images/youtube.png" alt="Watch the video" width="800">
+  </a>
+</p>
+
 ## Features
 
 - **Sidebar control panel** - a dedicated activity-bar view with everything you need.
@@ -17,6 +23,9 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 - **One key, all languages** - adding a new translation key writes to every language file in sync.
 - **Inline editing** - click any key to expand and edit values for every language right in the sidebar. Saves on blur or `Ctrl/Cmd+Enter`.
 - **AI translation (optional)** - one-click translate via the VS Code Language Model API. Works with GitHub Copilot or any other installed LM provider. Translate a single language or all of them from a chosen source.
+- **Translate from the editor** - select any string in your code, right-click → **i18n: Translate Selection…**. The extension recognises both **plain values** and **existing key paths** (it tells you when a translation already exists), suggests sibling keys whose last segment matches, and lets you reuse a key or create a new one on the fly (with optional AI translation into every language). The selection is replaced with the key path itself by default (configurable via `LocaleSynci18n.keyInsertTemplate`).
+- **AI key naming from selection** - select any free-form text, right-click → **i18n: Create Translation Key from Selection (AI)** and the model proposes a nicely-nested key path (e.g. *"Fixed the card files uploads by removing the redundant webkit building"* → `fixes.redundantText`), reusing your existing top-level groups when they fit. The key is created, translated into every language, and the selection is replaced with the configured template in one step.
+- **Auto-translate new languages** - when adding a new language file, tick **Auto-translate values with AI** and every key is translated from your source language. Translation is **batched** (many keys per AI request) so even large files complete in seconds rather than minutes.
 - **Add languages in a click** - new language files come pre-populated with all existing keys (empty, ready to translate).
 - **Sync check** - find keys missing in some files and fill them in (with empty values) in one click.
 - **Smart search** - filter by key name *or* by the value text in any language.
@@ -48,6 +57,28 @@ and signed in, expand any translation key and you'll see two new actions:
 - **✨ Translate all** in the key's actions row translate the same key into **every
   other language** at once. You pick the source language; if any target already has a
   value, you're asked whether to overwrite or only fill empties.
+- **Translate Selection from the editor** - select a string OR an existing key
+  path, right-click and choose **i18n: Translate Selection…**. The extension:
+  - Tells you when the selection is **already a key** in your translations and
+    previews each language's value.
+  - Lists keys whose **value** matches the selection (so you can reuse them).
+  - Lists keys whose **last segment** matches the selection's last segment
+    (e.g. selecting `accessCategoryTypeNameHeader` surfaces every key ending
+    in `.accessCategoryTypeNameHeader`).
+  - Otherwise lets you create a new key (the *new key* input is pre-filled
+    with the selection when it looks like a path; otherwise the *source
+    value* input is pre-filled). Optionally translates the new key into every
+    other language.
+  - Replaces the selection according to the `LocaleSynci18n.keyInsertTemplate`
+    setting (default `${key}` — just the key path; set it to something like
+    `t('${key}')` if your codebase needs a wrapper).
+- **Auto-translate when creating a new language file** - the *Add Language*
+  dialog includes an **Auto-translate values with AI** checkbox (shown when a
+  model is available). When checked, every value is translated from the
+  chosen source language right after the file is created. Translation is
+  **batched** (many keys per AI request) so even large dictionaries finish in
+  seconds rather than minutes; if a batch reply can't be parsed, the affected
+  entries fall back to per-key translation automatically.
 
 Notes:
 
@@ -88,15 +119,18 @@ preserving your existing structure.
 | `LocaleSynci18n.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
 | `LocaleSynci18n.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
 | `LocaleSynci18n.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
+| `LocaleSynci18n.keyInsertTemplate`      | Template used to replace the selection when running **Translate Selection** / **Create Translation Key from Selection**. Use `${key}` as the placeholder. Example: `"t('${key}')"` if you want a wrapper. | `"${key}"` |
 
 These settings are written to your **workspace** settings, so each project can have its own config.
 
 ## Commands
 
-Available from the Command Palette (`Ctrl/Cmd+Shift+P`):
+Available from the Command Palette (`Ctrl/Cmd+Shift+P`) and the editor context menu:
 
 - `i18n Data Manager: Configure Translations Folder`
 - `i18n Data Manager: Refresh`
+- `i18n: Translate Selection…` - also available by right-clicking a selection in any text editor.
+- `i18n: Create Translation Key from Selection (AI)` - also available by right-clicking a selection. Asks AI for a nicely-nested key path, creates the key with the selection as its source value, and translates it to every other language.
 
 ## Build from source
 

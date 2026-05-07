@@ -2,7 +2,7 @@
   "name": "localesync-i18n",
   "displayName": "LocaleSync: i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
-  "version": "1.0.1",
+  "version": "1.4.1",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -77,8 +77,30 @@
       {
         "command": "LocaleSynci18n.refresh",
         "title": "i18n Data Manager: Refresh"
+      },
+      {
+        "command": "LocaleSynci18n.translateSelection",
+        "title": "i18n: Translate Selection…"
+      },
+      {
+        "command": "LocaleSynci18n.createKeyFromSelection",
+        "title": "i18n: Create Translation Key from Selection (AI)"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "LocaleSynci18n.translateSelection",
+          "when": "editorHasSelection || editorTextFocus",
+          "group": "1_modification@99"
+        },
+        {
+          "command": "LocaleSynci18n.createKeyFromSelection",
+          "when": "editorHasSelection",
+          "group": "1_modification@100"
+        }
+      ]
+    },
     "configuration": {
       "title": "i18n Data Manager",
       "properties": {
@@ -101,6 +123,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show AI translation buttons in the sidebar. Requires an installed VS Code language model provider (e.g. GitHub Copilot). When no provider is available, the buttons are hidden automatically and the rest of the extension works normally."
+        },
+        "LocaleSynci18n.keyInsertTemplate": {
+          "type": "string",
+          "default": "${key}",
+          "description": "Template used to insert a translation key reference into your code from the 'Translate Selection' command. Use ${key} as the placeholder for the key name."
         }
       }
     }
@@ -118,7 +145,7 @@
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "@vscode/vsce": "^2.24.0",
+    "@vscode/vsce": "^3.9.1",
     "eslint": "^8.57.0",
     "typescript": "^5.3.0"
   }
