@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-11
+
+### Added
+
+- **Auto-detected translations folder suggestions in the empty state.** When no folder is configured yet, the sidebar now scans the workspace for folders containing locale-named JSON files (`en.json`, `en_US.json`, `en-US.json`, `zh-Hans.json`, …) and shows them as one-click cards. The "Choose Translations Folder" button stays as a fallback. Heavy directories (`node_modules`, `dist`, `build`, `.git`, …) are skipped.
+
+## [1.5.0] - 2026-05-11
+
+### Added — Code integration features
+
+- **Hover preview of every language** above any translation key in your code (`t("…")`, `$t("…")`, `i18next.t("…")`, `<Trans i18nKey="…">`, `'…' | translate`). Shows a markdown table of all languages with command links to reveal the key, translate it, or rename it globally.
+- **CodeLens** above key call sites with the default-language value inline, so you can read your UI copy without leaving the file.
+- **Diagnostics:**
+  - `i18n.missingKey` — a key referenced in code is not defined in any language file.
+  - `i18n.emptyTranslation` — a key exists but is empty in some language files.
+  - `i18n.hardcodedString` — heuristic detection of human-readable string/JSX literals that aren't wrapped in a translation call.
+- **Quick-fixes:**
+  - "Extract to translation key (AI)" on hardcoded-string diagnostics — runs the existing AI key-suggestion flow on the selected literal.
+  - "Create this key" on missing-key diagnostics — adds the key with one prompt for the source value.
+- **`i18n: Find Unused Translation Keys`** — scans the workspace for key references and lists keys that no source file uses; multi-select and delete in one go.
+- **`i18n: Rename Translation Key Globally…`** — renames the key in every language file AND every code reference in the workspace, then saves the affected source files.
+- **`i18n: Auto Namespace Refactor…`** — pick a prefix like `comp.foo` and rename it to `components.foo`; every key under it (and every code reference) is updated atomically.
+- **`i18n: AI Review Translations…`** — asks the language model to judge each translation of a key against the source for meaning, placeholder integrity, tone, and emptiness; results land in the new "i18n Review" output channel.
+- **`i18n: Show Key References`** — lists every code reference of the key under the cursor (also available from the editor context menu).
+
+### Configuration
+
+- New settings under `LocaleSynci18n.codeIntegration.*` to toggle each new feature individually:
+  - `hover`, `codeLens`, `diagnostics`, `hardcodedDetection` (all default `true`).
+
 ## [1.4.1] - 2026-05-07
 
 ### Changed

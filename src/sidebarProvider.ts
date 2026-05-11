@@ -72,6 +72,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 "LocaleSynci18n.configureFolder",
               );
               break;
+            case "useSuggestion": {
+              const folderPath: string = data.payload?.folderPath;
+              if (folderPath) {
+                await this._service.setTranslationsFolder(folderPath);
+                // The settings change will trigger refresh + watcher rewire,
+                // but call refresh defensively in case the listener races.
+                await this.sendState();
+              }
+              break;
+            }
             case "addKey":
               await this._service.addKey(data.payload.key, data.payload.values);
               await this.sendState();

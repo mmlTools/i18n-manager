@@ -3,7 +3,7 @@
 
   const vscode = acquireVsCodeApi();
 
-  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,flattened:Record<string,string>}>, keys:string[], defaultLanguage:string, aiAvailable:boolean}} */
+  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,flattened:Record<string,string>}>, keys:string[], defaultLanguage:string, aiAvailable:boolean, folderSuggestions?:Array<{folderPath:string,display:string,sampleLocales:string[],fileCount:number}>}} */
   let state = {
     configured: false,
     folderPath: "",
@@ -12,6 +12,7 @@
     keys: [],
     defaultLanguage: "en",
     aiAvailable: false,
+    folderSuggestions: [],
   };
 
   /**
@@ -157,7 +158,11 @@
   // ─── Empty state ────────────────────────────────────────────
 
   function renderEmpty() {
-    return el("div", { class: "empty" }, [
+    const suggestions = Array.isArray(state.folderSuggestions)
+      ? state.folderSuggestions
+      : [];
+
+    const children = [
       el("div", { class: "empty__icon" }, "🌐"),
       el("div", { class: "empty__title" }, "No translations folder configured"),
       el(
@@ -167,12 +172,68 @@
           ? `The configured path "${state.folderDisplay}" does not exist.`
           : "Pick the folder where your i18n .json files live to get started.",
       ),
+    ];
+
+    if (suggestions.length > 0) {
+      children.push(
+        el("div", { class: "suggestions__title" }, [
+          "✨ ",
+          suggestions.length === 1
+            ? "Detected a likely translations folder:"
+            : `Detected ${suggestions.length} likely translations folders:`,
+        ]),
+        el(
+          "div",
+          { class: "suggestions" },
+          suggestions.map((s) => renderSuggestion(s)),
+        ),
+        el(
+          "div",
+          { class: "suggestions__or" },
+          "or pick a different folder manually:",
+        ),
+      );
+    }
+
+    children.push(
       el(
         "button",
-        { class: "btn btn--primary", onClick: () => send("configure") },
+        {
+          class: suggestions.length > 0 ? "btn btn--ghost" : "btn btn--primary",
+          onClick: () => send("configure"),
+        },
         "Choose Translations Folder",
       ),
-    ]);
+    );
+
+    return el("div", { class: "empty" }, children);
+  }
+
+  function renderSuggestion(s) {
+    const sample = (s.sampleLocales || []).join(", ");
+    const more =
+      s.fileCount > (s.sampleLocales || []).length
+        ? ` +${s.fileCount - s.sampleLocales.length} more`
+        : "";
+    return el(
+      "button",
+      {
+        class: "suggestion",
+        title: s.folderPath,
+        onClick: () => send("useSuggestion", { folderPath: s.folderPath }),
+      },
+      [
+        el("div", { class: "suggestion__path" }, [
+          "📁 ",
+          el("strong", null, s.display),
+        ]),
+        el(
+          "div",
+          { class: "suggestion__meta" },
+          `${s.fileCount} locale file${s.fileCount === 1 ? "" : "s"} · ${sample}${more}`,
+        ),
+      ],
+    );
   }
 
   // ─── Header ─────────────────────────────────────────────────

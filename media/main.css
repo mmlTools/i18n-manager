@@ -94,6 +94,57 @@ label {
   font-size: 12px;
 }
 
+/* ─── Folder suggestions (empty state) ─────────────────────── */
+
+.suggestions__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground);
+  margin: 4px 0 8px 0;
+  text-align: left;
+}
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, transparent));
+  border-radius: 4px;
+  background: var(--vscode-list-inactiveSelectionBackground, transparent);
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font: inherit;
+}
+.suggestion:hover,
+.suggestion:focus {
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
+  outline: none;
+}
+.suggestion__path {
+  font-size: 13px;
+  margin-bottom: 2px;
+  word-break: break-all;
+}
+.suggestion__meta {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  word-break: break-all;
+}
+.suggestions__or {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+}
+
 /* ─── Header (folder location) ─────────────────────────────── */
 
 .header {

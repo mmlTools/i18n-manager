@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { SidebarProvider } from './sidebarProvider';
 import { I18nService } from './i18nService';
+import { registerLanguageFeatures } from './languageFeatures';
+import { registerCodeIntegrationCommands } from './codeIntegrationCommands';
 
 export function activate(context: vscode.ExtensionContext) {
   const i18nService = new I18nService();
@@ -25,6 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("LocaleSynci18n")) {
         sidebarProvider.refresh();
+        languageFeatures?.invalidate();
       }
     }),
   );
@@ -44,17 +46,42 @@ export function activate(context: vscode.ExtensionContext) {
     if (folder) {
       const pattern = new vscode.RelativePattern(folder, "*.json");
       watcher = vscode.workspace.createFileSystemWatcher(pattern);
-      watcher.onDidChange(() => sidebarProvider.refresh());
-      watcher.onDidCreate(() => sidebarProvider.refresh());
-      watcher.onDidDelete(() => sidebarProvider.refresh());
+      watcher.onDidChange(() => {
+        sidebarProvider.refresh();
+        languageFeatures?.invalidate();
+      });
+      watcher.onDidCreate(() => {
+        sidebarProvider.refresh();
+        languageFeatures?.invalidate();
+      });
+      watcher.onDidDelete(() => {
+        sidebarProvider.refresh();
+        languageFeatures?.invalidate();
+      });
       context.subscriptions.push(watcher);
     }
   };
+  // languageFeatures is registered after watcher is defined; the closure
+  // captures the binding so the assigned value is visible at trigger time.
+  const languageFeatures = registerLanguageFeatures(context, i18nService, () =>
+    sidebarProvider.refresh(),
+  );
+  registerCodeIntegrationCommands(
+    context,
+    i18nService,
+    sidebarProvider,
+    languageFeatures.invalidate,
+  );
+
   setupWatcher();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("LocaleSynci18n.translationsPath")) {
+      if (
+        e.affectsConfiguration("LocaleSynci18n.translationsPath") ||
+        e.affectsConfiguration("LocaleSynci18n.defaultLanguage")
+      ) {
         setupWatcher();
+        languageFeatures.invalidate();
       }
     }),
   );
@@ -77,19 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
           openLabel: "Select Translations Folder",
         });
         if (!picked || picked.length === 0) return;
-        const absolute = picked[0].fsPath;
-        let toSave = absolute;
-        const wsPath = ws.uri.fsPath;
-        if (absolute.startsWith(wsPath)) {
-          toSave = path.relative(wsPath, absolute) || ".";
-        }
-        await vscode.workspace
-          .getConfiguration("LocaleSynci18n")
-          .update(
-            "translationsPath",
-            toSave,
-            vscode.ConfigurationTarget.Workspace,
-          );
+        await i18nService.setTranslationsFolder(picked[0].fsPath);
         sidebarProvider.refresh();
         setupWatcher();
       },

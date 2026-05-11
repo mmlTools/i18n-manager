@@ -2,7 +2,7 @@
   "name": "localesync-i18n",
   "displayName": "LocaleSync: i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
-  "version": "1.4.2",
+  "version": "1.5.1",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -85,6 +85,26 @@
       {
         "command": "LocaleSynci18n.createKeyFromSelection",
         "title": "i18n: Create Translation Key from Selection (AI)"
+      },
+      {
+        "command": "LocaleSynci18n.findUnusedKeys",
+        "title": "i18n: Find Unused Translation Keys"
+      },
+      {
+        "command": "LocaleSynci18n.renameKeyGlobal",
+        "title": "i18n: Rename Translation Key Globally…"
+      },
+      {
+        "command": "LocaleSynci18n.renameNamespace",
+        "title": "i18n: Auto Namespace Refactor…"
+      },
+      {
+        "command": "LocaleSynci18n.reviewTranslations",
+        "title": "i18n: AI Review Translations…"
+      },
+      {
+        "command": "LocaleSynci18n.showKeyUsages",
+        "title": "i18n: Show Key References"
       }
     ],
     "menus": {
@@ -98,6 +118,11 @@
           "command": "LocaleSynci18n.createKeyFromSelection",
           "when": "editorHasSelection",
           "group": "1_modification@100"
+        },
+        {
+          "command": "LocaleSynci18n.showKeyUsages",
+          "when": "editorTextFocus",
+          "group": "1_modification@101"
         }
       ]
     },
@@ -128,6 +153,26 @@
           "type": "string",
           "default": "${key}",
           "description": "Template used to insert a translation key reference into your code from the 'Translate Selection' command. Use ${key} as the placeholder for the key name."
+        },
+        "LocaleSynci18n.codeIntegration.hover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a hover preview of every language when you hover a translation key in your code."
+        },
+        "LocaleSynci18n.codeIntegration.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a CodeLens above translation-key call sites with the default-language value inline."
+        },
+        "LocaleSynci18n.codeIntegration.diagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when a translation key referenced in code is missing or empty in some language files."
+        },
+        "LocaleSynci18n.codeIntegration.hardcodedDetection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Detect hardcoded UI strings in your source code and offer to extract them into translation keys."
         }
       }
     }

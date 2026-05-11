@@ -8,6 +8,23 @@ export interface LanguageData {
   flattened: Record<string, string>;
 }
 
+/**
+ * A workspace folder that *looks* like a translations folder — it contains
+ * one or more files whose names match common locale patterns (`en.json`,
+ * `en_US.json`, `en-US.json`, …). Surfaced in the empty state so the user
+ * can one-click instead of digging through the file picker.
+ */
+export interface FolderSuggestion {
+  /** Absolute path on disk. */
+  folderPath: string;
+  /** Path relative to the workspace root, or absolute when outside it. */
+  display: string;
+  /** Sample of locale codes detected inside (max 6). */
+  sampleLocales: string[];
+  /** Total number of locale-named JSON files in the folder. */
+  fileCount: number;
+}
+
 export interface I18nState {
   configured: boolean;
   folderPath: string;
@@ -17,6 +34,12 @@ export interface I18nState {
   defaultLanguage: string;
   /** True only when the user has both opted in (setting) AND a language model is reachable. */
   aiAvailable: boolean;
+  /**
+   * When `configured` is false, candidate folders detected in the workspace
+   * that look like they hold translation .json files (`en.json`, `en_US.json`,
+   * `en-US.json`, …). Empty otherwise.
+   */
+  folderSuggestions: FolderSuggestion[];
 }
 
 export class I18nService {
@@ -578,6 +601,118 @@ export class I18nService {
     return matches;
   }
 
+  // ─── Folder discovery ───────────────────────────────────────
+
+  /**
+   * Match locale-style filenames (without extension):
+   *   en, en_US, en-US, en_us, zh-Hans, pt_BR, sr-Latn-RS, …
+   * Two- or three-letter language code, optionally followed by `-`/`_`
+   * separated region/script subtags (each 2-4 alphanum chars).
+   */
+  private static readonly LOCALE_NAME = /^[a-z]{2,3}(?:[-_][a-zA-Z0-9]{2,4}){0,3}$/i;
+
+  /**
+   * Scan the workspace for folders that look like they hold translation
+   * .json files and return them ranked by likelihood.
+   *
+   * Heuristic: a folder qualifies when at least one direct-child .json file
+   * has a locale-style name (`en.json`, `en_US.json`, `zh-Hans.json`, …).
+   * The scan honours `files.exclude`/`search.exclude` and skips heavy
+   * directories (node_modules, dist, build, .next, .git, …).
+   *
+   * Returns at most 10 suggestions, ranked by:
+   *   1. number of locale files (descending),
+   *   2. shorter relative path (closer to root wins),
+   *   3. alphabetical.
+   */
+  async findCandidateFolders(): Promise<FolderSuggestion[]> {
+    const ws = vscode.workspace.workspaceFolders?.[0];
+    if (!ws) return [];
+
+    let uris: vscode.Uri[];
+    try {
+      uris = await vscode.workspace.findFiles(
+        "**/*.json",
+        "**/{node_modules,out,dist,build,.next,.nuxt,coverage,.git,.svn,.hg,.idea,.vscode-test,.cache,vendor,target,bin,obj}/**",
+        4000,
+      );
+    } catch {
+      return [];
+    }
+
+    // Group locale-named JSON files by their parent folder.
+    const groups = new Map<string, string[]>();
+    for (const uri of uris) {
+      if (uri.scheme !== "file") continue;
+      const file = path.basename(uri.fsPath);
+      const stem = file.replace(/\.json$/i, "");
+      if (!I18nService.LOCALE_NAME.test(stem)) continue;
+      const dir = path.dirname(uri.fsPath);
+      const list = groups.get(dir) ?? [];
+      list.push(stem);
+      groups.set(dir, list);
+    }
+
+    if (groups.size === 0) return [];
+
+    const wsRoot = ws.uri.fsPath;
+    const suggestions: FolderSuggestion[] = [];
+    for (const [folderPath, locales] of groups) {
+      // De-dup case-insensitively but preserve original casing of the first occurrence.
+      const seen = new Set<string>();
+      const uniqueLocales: string[] = [];
+      for (const l of locales) {
+        const key = l.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        uniqueLocales.push(l);
+      }
+      uniqueLocales.sort((a, b) => a.localeCompare(b));
+      const display = this.toDisplayPath(folderPath);
+      suggestions.push({
+        folderPath,
+        display: display === "" ? "." : display,
+        sampleLocales: uniqueLocales.slice(0, 6),
+        fileCount: uniqueLocales.length,
+      });
+    }
+
+    suggestions.sort((a, b) => {
+      if (b.fileCount !== a.fileCount) return b.fileCount - a.fileCount;
+      const aRel = path.relative(wsRoot, a.folderPath);
+      const bRel = path.relative(wsRoot, b.folderPath);
+      const aDepth = aRel.split(path.sep).filter(Boolean).length;
+      const bDepth = bRel.split(path.sep).filter(Boolean).length;
+      if (aDepth !== bDepth) return aDepth - bDepth;
+      return a.display.localeCompare(b.display);
+    });
+
+    return suggestions.slice(0, 10);
+  }
+
+  /**
+   * Persist a chosen folder to the workspace configuration. Stores a
+   * workspace-relative path when the folder lives inside the workspace,
+   * otherwise the absolute path.
+   */
+  async setTranslationsFolder(folderPath: string): Promise<void> {
+    const ws = vscode.workspace.workspaceFolders?.[0];
+    let toSave = folderPath;
+    if (ws) {
+      const wsPath = ws.uri.fsPath;
+      if (folderPath === wsPath || folderPath.startsWith(wsPath + path.sep)) {
+        toSave = path.relative(wsPath, folderPath) || ".";
+      }
+    }
+    await vscode.workspace
+      .getConfiguration("LocaleSynci18n")
+      .update(
+        "translationsPath",
+        toSave,
+        vscode.ConfigurationTarget.Workspace,
+      );
+  }
+
   // ─── State loading ──────────────────────────────────────────
 
   async loadState(): Promise<I18nState> {
@@ -586,6 +721,7 @@ export class I18nService {
     const aiAvailable = await this.isLanguageModelAvailable();
 
     if (!folderPath) {
+      const folderSuggestions = await this.findCandidateFolders();
       return {
         configured: false,
         folderPath: "",
@@ -594,6 +730,7 @@ export class I18nService {
         keys: [],
         defaultLanguage,
         aiAvailable,
+        folderSuggestions,
       };
     }
 
@@ -608,6 +745,7 @@ export class I18nService {
     const folderDisplay = this.toDisplayPath(folderPath);
 
     if (!exists) {
+      const folderSuggestions = await this.findCandidateFolders();
       return {
         configured: false,
         folderPath,
@@ -616,6 +754,7 @@ export class I18nService {
         keys: [],
         defaultLanguage,
         aiAvailable,
+        folderSuggestions,
       };
     }
 
@@ -664,6 +803,7 @@ export class I18nService {
       keys: Array.from(keysSet).sort(),
       defaultLanguage,
       aiAvailable,
+      folderSuggestions: [],
     };
   }
 
@@ -834,5 +974,151 @@ export class I18nService {
       }
     }
     return writes;
+  }
+
+  /**
+   * Rename every key whose path starts with `oldPrefix` so that the prefix
+   * becomes `newPrefix`. Used by the "auto namespace refactor" command.
+   * Returns the (oldKey → newKey) map of every change applied so callers can
+   * also update source-code references.
+   */
+  async renameNamespace(
+    oldPrefix: string,
+    newPrefix: string,
+  ): Promise<Record<string, string>> {
+    const oldP = oldPrefix.replace(/\.+$/, "");
+    const newP = newPrefix.replace(/\.+$/, "");
+    if (!oldP) throw new Error("Old namespace cannot be empty.");
+    if (!newP) throw new Error("New namespace cannot be empty.");
+    if (oldP === newP) return {};
+    const state = await this.loadState();
+    const mapping: Record<string, string> = {};
+    for (const k of state.keys) {
+      if (k === oldP || k.startsWith(oldP + ".")) {
+        const tail = k === oldP ? "" : k.slice(oldP.length + 1);
+        mapping[k] = tail ? `${newP}.${tail}` : newP;
+      }
+    }
+    if (Object.keys(mapping).length === 0) return mapping;
+
+    // Apply to every language file in one pass.
+    for (const lang of state.languages) {
+      const next: Record<string, string> = {};
+      let changed = false;
+      for (const [k, v] of Object.entries(lang.flattened)) {
+        const renamed = mapping[k];
+        if (renamed) {
+          if (renamed in next) {
+            // Collision: prefer the existing (already-mapped) value to avoid
+            // accidental data loss; surface a warning via stderr.
+            process.stderr.write(
+              `i18n Data Manager: namespace rename collision on "${renamed}" (from "${k}")\n`,
+            );
+          } else {
+            next[renamed] = v;
+          }
+          changed = true;
+        } else {
+          next[k] = v;
+        }
+      }
+      if (changed) await this.writeLanguage(lang.filePath, next);
+    }
+    return mapping;
+  }
+
+  /** Apply a batch of key renames (oldKey → newKey) in a single pass. */
+  async renameMany(mapping: Record<string, string>): Promise<void> {
+    const entries = Object.entries(mapping).filter(([a, b]) => a && b && a !== b);
+    if (entries.length === 0) return;
+    const state = await this.loadState();
+    for (const lang of state.languages) {
+      const next: Record<string, string> = { ...lang.flattened };
+      let changed = false;
+      for (const [oldKey, newKey] of entries) {
+        if (oldKey in next) {
+          next[newKey] = next[oldKey];
+          delete next[oldKey];
+          changed = true;
+        }
+      }
+      if (changed) await this.writeLanguage(lang.filePath, next);
+    }
+  }
+
+  /**
+   * Ask the language model to review existing translations of a key against
+   * the source language and flag issues (mistranslation, missing placeholders,
+   * tone mismatch, etc.). Returns one entry per non-source language.
+   */
+  async reviewKeyTranslations(
+    key: string,
+    sourceLang: string,
+    token?: vscode.CancellationToken,
+  ): Promise<Array<{ language: string; verdict: "ok" | "issue" | "missing"; comment: string }>> {
+    const state = await this.loadState();
+    const source = state.languages.find((l) => l.code === sourceLang);
+    if (!source) throw new Error(`Source language "${sourceLang}" not found.`);
+    const sourceValue = source.flattened[key] ?? "";
+    if (!sourceValue.trim()) {
+      throw new Error(
+        `Source value for "${key}" in "${sourceLang}" is empty.`,
+      );
+    }
+
+    const targets = state.languages.filter((l) => l.code !== sourceLang);
+    if (targets.length === 0) return [];
+
+    const payload: Record<string, string> = {};
+    for (const t of targets) payload[t.code] = t.flattened[key] ?? "";
+
+    const prompt =
+      `You are reviewing software localization quality.\n` +
+      `Source key: "${key}"\n` +
+      `Source language: "${sourceLang}"\n` +
+      `Source value:\n"""\n${sourceValue}\n"""\n\n` +
+      `Existing translations (JSON, language → value):\n${JSON.stringify(payload, null, 2)}\n\n` +
+      `For EACH target language, judge whether the translation:\n` +
+      `- Preserves meaning of the source.\n` +
+      `- Preserves all placeholders ({name}, {{count}}, %s, %d, ICU, HTML, etc.) EXACTLY.\n` +
+      `- Uses appropriate tone/register for UI copy.\n` +
+      `- Is non-empty and not just a copy of the source.\n\n` +
+      `Reply with ONLY a JSON object of the form:\n` +
+      `{ "<lang>": { "verdict": "ok" | "issue" | "missing", "comment": "<short reason>" }, ... }\n` +
+      `- "ok"      = translation is acceptable.\n` +
+      `- "issue"   = translation has a problem (explain briefly in comment).\n` +
+      `- "missing" = translation is empty.\n` +
+      `Keep each comment under 140 characters. No markdown, no fences.`;
+
+    const model = await this.getChatModel();
+    const messages = [vscode.LanguageModelChatMessage.User(prompt)];
+    const cancel = token ?? new vscode.CancellationTokenSource().token;
+    let raw = "";
+    try {
+      const response = await model.sendRequest(messages, {}, cancel);
+      for await (const chunk of response.text) raw += chunk;
+    } catch (e) {
+      if (e instanceof vscode.LanguageModelError) {
+        throw new Error(`Language model error: ${e.message}`);
+      }
+      throw e;
+    }
+
+    const parsed = this.parseBatchJson(raw) ?? {};
+    return targets.map((t) => {
+      const entry = parsed[t.code] as
+        | { verdict?: string; comment?: string }
+        | undefined;
+      const verdictRaw = (entry?.verdict || "").toString().toLowerCase();
+      const verdict: "ok" | "issue" | "missing" =
+        verdictRaw === "ok" || verdictRaw === "issue" || verdictRaw === "missing"
+          ? (verdictRaw as "ok" | "issue" | "missing")
+          : (payload[t.code] || "").trim() === ""
+            ? "missing"
+            : "issue";
+      const comment = (entry?.comment ?? "").toString().slice(0, 200) ||
+        (verdict === "missing" ? "Translation is empty." : "No comment.");
+      return { language: t.code, verdict, comment };
+    });
   }
 }
