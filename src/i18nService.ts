@@ -5,13 +5,16 @@ import * as fs from 'fs/promises';
 export interface LanguageData {
   code: string;
   filePath: string;
+  format: TranslationFormat;
   flattened: Record<string, string>;
 }
+
+export type TranslationFormat = "json" | "ini";
 
 /**
  * A workspace folder that *looks* like a translations folder — it contains
  * one or more files whose names match common locale patterns (`en.json`,
- * `en_US.json`, `en-US.json`, …). Surfaced in the empty state so the user
+ * `en_US.ini`, `en-US.json`, …). Surfaced in the empty state so the user
  * can one-click instead of digging through the file picker.
  */
 export interface FolderSuggestion {
@@ -21,7 +24,7 @@ export interface FolderSuggestion {
   display: string;
   /** Sample of locale codes detected inside (max 6). */
   sampleLocales: string[];
-  /** Total number of locale-named JSON files in the folder. */
+  /** Total number of locale-named translation files in the folder. */
   fileCount: number;
 }
 
@@ -36,13 +39,15 @@ export interface I18nState {
   aiAvailable: boolean;
   /**
    * When `configured` is false, candidate folders detected in the workspace
-   * that look like they hold translation .json files (`en.json`, `en_US.json`,
-   * `en-US.json`, …). Empty otherwise.
+   * that look like they hold translation files (`en.json`, `en-US.ini`, …).
+   * Empty otherwise.
    */
   folderSuggestions: FolderSuggestion[];
 }
 
 export class I18nService {
+  private static readonly SUPPORTED_EXTENSIONS = [".json", ".ini"] as const;
+
   resolveFolderPath(): string | undefined {
     const config = vscode.workspace.getConfiguration("LocaleSynci18n");
     const setting = (config.get<string>("translationsPath") || "").trim();
@@ -613,10 +618,10 @@ export class I18nService {
 
   /**
    * Scan the workspace for folders that look like they hold translation
-   * .json files and return them ranked by likelihood.
+   * .json/.ini files and return them ranked by likelihood.
    *
-   * Heuristic: a folder qualifies when at least one direct-child .json file
-   * has a locale-style name (`en.json`, `en_US.json`, `zh-Hans.json`, …).
+   * Heuristic: a folder qualifies when at least one direct-child translation
+   * file has a locale-style name (`en.json`, `en-US.ini`, `zh-Hans.json`, …).
    * The scan honours `files.exclude`/`search.exclude` and skips heavy
    * directories (node_modules, dist, build, .next, .git, …).
    *
@@ -632,7 +637,7 @@ export class I18nService {
     let uris: vscode.Uri[];
     try {
       uris = await vscode.workspace.findFiles(
-        "**/*.json",
+        "**/*.{json,ini}",
         "**/{node_modules,out,dist,build,.next,.nuxt,coverage,.git,.svn,.hg,.idea,.vscode-test,.cache,vendor,target,bin,obj}/**",
         4000,
       );
@@ -640,12 +645,14 @@ export class I18nService {
       return [];
     }
 
-    // Group locale-named JSON files by their parent folder.
+    // Group locale-named translation files by their parent folder.
     const groups = new Map<string, string[]>();
     for (const uri of uris) {
       if (uri.scheme !== "file") continue;
       const file = path.basename(uri.fsPath);
-      const stem = file.replace(/\.json$/i, "");
+      const ext = path.extname(file).toLowerCase();
+      if (!I18nService.isSupportedExtension(ext)) continue;
+      const stem = path.basename(file, ext);
       if (!I18nService.LOCALE_NAME.test(stem)) continue;
       const dir = path.dirname(uri.fsPath);
       const list = groups.get(dir) ?? [];
@@ -762,18 +769,23 @@ export class I18nService {
     const languages: LanguageData[] = [];
 
     for (const file of files) {
-      if (!file.toLowerCase().endsWith(".json")) continue;
+      const ext = path.extname(file).toLowerCase();
+      if (!I18nService.isSupportedExtension(ext)) continue;
       const filePath = path.join(folderPath, file);
       try {
         const stat = await fs.stat(filePath);
         if (!stat.isFile()) continue;
         const content = await fs.readFile(filePath, "utf-8");
-        const trimmed = content.trim();
-        const data = trimmed.length === 0 ? {} : JSON.parse(trimmed);
+        const format = ext === ".ini" ? "ini" : "json";
+        const data =
+          format === "ini"
+            ? this.parseIni(content)
+            : this.flattenJsonContent(content);
         languages.push({
-          code: file.replace(/\.json$/i, ""),
+          code: path.basename(file, ext),
           filePath,
-          flattened: this.flatten(data),
+          format,
+          flattened: data,
         });
       } catch (e) {
         process.stderr.write(
@@ -859,6 +871,11 @@ export class I18nService {
     filePath: string,
     flat: Record<string, string>,
   ): Promise<void> {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === ".ini") {
+      await fs.writeFile(filePath, this.stringifyIni(flat), "utf-8");
+      return;
+    }
     const nested = this.unflatten(flat);
     const indent = this.getIndent();
     const json = JSON.stringify(nested, null, indent);
@@ -928,7 +945,8 @@ export class I18nService {
     const state = await this.loadState();
     const folder = state.folderPath;
     if (!folder) throw new Error("No translations folder is configured.");
-    const filePath = path.join(folder, `${trimmed}.json`);
+    const format = this.pickNewLanguageFormat(state, copyFrom);
+    const filePath = path.join(folder, `${trimmed}.${format}`);
 
     try {
       await fs.access(filePath);
@@ -1120,5 +1138,94 @@ export class I18nService {
         (verdict === "missing" ? "Translation is empty." : "No comment.");
       return { language: t.code, verdict, comment };
     });
+  }
+
+  private static isSupportedExtension(ext: string): boolean {
+    return (I18nService.SUPPORTED_EXTENSIONS as readonly string[]).includes(
+      ext.toLowerCase(),
+    );
+  }
+
+  private flattenJsonContent(content: string): Record<string, string> {
+    const trimmed = content.trim();
+    const data = trimmed.length === 0 ? {} : JSON.parse(trimmed);
+    return this.flatten(data);
+  }
+
+  /**
+   * Parse OBS-style locale INI files:
+   *   Common.Scoreboard="Scoreboard"
+   *   Common.SaveAndClose="Save && Close"
+   *
+   * Section headers and comment/blank lines are ignored. Dotted keys remain
+   * flat so they line up with the sidebar's dot-notation model.
+   */
+  parseIni(content: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith(";") || line.startsWith("#")) continue;
+      if (/^\[[^\]]+\]$/.test(line)) continue;
+      const eq = line.indexOf("=");
+      if (eq <= 0) continue;
+
+      const key = line.slice(0, eq).trim();
+      if (!key) continue;
+      const rawValue = line.slice(eq + 1).trim();
+      result[key] = this.parseIniValue(rawValue);
+    }
+    return result;
+  }
+
+  private parseIniValue(value: string): string {
+    if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+      const inner = value.slice(1, -1);
+      return inner.replace(/\\(n|r|t|"|\\)/g, (_m, ch: string) => {
+        switch (ch) {
+          case "n":
+            return "\n";
+          case "r":
+            return "\r";
+          case "t":
+            return "\t";
+          case '"':
+            return '"';
+          case "\\":
+            return "\\";
+          default:
+            return ch;
+        }
+      });
+    }
+    return value;
+  }
+
+  stringifyIni(flat: Record<string, string>): string {
+    return (
+      Object.keys(flat)
+        .sort()
+        .map((key) => `${key}="${this.escapeIniValue(flat[key] ?? "")}"`)
+        .join("\n") + "\n"
+    );
+  }
+
+  private escapeIniValue(value: string): string {
+    return value
+      .replace(/\\/g, "\\\\")
+      .replace(/\r/g, "\\r")
+      .replace(/\n/g, "\\n")
+      .replace(/\t/g, "\\t")
+      .replace(/"/g, '\\"');
+  }
+
+  private pickNewLanguageFormat(
+    state: I18nState,
+    copyFrom?: string,
+  ): TranslationFormat {
+    const source =
+      (copyFrom && state.languages.find((l) => l.code === copyFrom)) ||
+      state.languages.find((l) => l.code === state.defaultLanguage) ||
+      state.languages[0];
+    return source?.format ?? "json";
   }
 }

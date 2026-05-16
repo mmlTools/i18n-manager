@@ -19,7 +19,7 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 ## Features
 
 - **Sidebar control panel** - a dedicated activity-bar view with everything you need.
-- **Configure once** - point it at the folder where your `*.json` translation files live (per-workspace setting).
+- **Configure once** - point it at the folder where your `*.json` or `*.ini` translation files live (per-workspace setting).
 - **One key, all languages** - adding a new translation key writes to every language file in sync.
 - **Inline editing** - click any key to expand and edit values for every language right in the sidebar. Saves on blur or `Ctrl/Cmd+Enter`.
 - **AI translation (optional)** - one-click translate via the VS Code Language Model API. Works with GitHub Copilot or any other installed LM provider. Translate a single language or all of them from a chosen source.
@@ -30,7 +30,7 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 - **Sync check** - find keys missing in some files and fill them in (with empty values) in one click.
 - **Smart search** - filter by key name *or* by the value text in any language.
 - **Incomplete-only filter** - instantly see what still needs translating.
-- **Nested keys supported** - dot-notation in the UI (`common.buttons.submit`), nested JSON on disk.
+- **Nested keys supported** - dot-notation in the UI (`common.buttons.submit`), nested JSON on disk, and flat dotted keys in INI files.
 - **Theme-aware** - uses VS Code's theme variables, so it matches whatever you've got.
 
 ## 📸 Preview
@@ -43,7 +43,7 @@ GitHub Copilot or any other VS Code language model, all without leaving VS Code.
 1. Install the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MMLTECH.localesync-i18n).
 2. Open a workspace that contains your translation files.
 3. Click the 🌐 **i18n Data Manager** icon in the activity bar.
-4. Click **Choose Translations Folder** and pick the folder containing your `en.json`, `fr.json`, etc.
+4. Click **Choose Translations Folder** and pick the folder containing your `en.json`, `fr.json`, `en-US.ini`, etc.
 5. Done, start adding keys and languages from the sidebar.
 
 ## AI translation
@@ -89,20 +89,31 @@ Notes:
 
 ## Expected file layout
 
-The extension expects one JSON file per language inside the configured folder. The filename
-(without `.json`) is taken as the language code:
+The extension expects one translation file per language inside the configured folder. The filename
+(without `.json` or `.ini`) is taken as the language code:
 
 ```
 locales/
 ├── en.json
 ├── fr.json
-├── es.json
-└── de-DE.json
+├── es.ini
+└── de-DE.ini
 ```
 
 Both flat (`{ "hello": "Hi" }`) and nested (`{ "common": { "hello": "Hi" } }`) JSON are
 supported. Nested files are flattened to dot-notation in the UI and re-nested on write,
 preserving your existing structure.
+
+INI files are supported in the OBS-style flat format:
+
+```ini
+Common.Scoreboard="Scoreboard"
+Common.MatchStats="Match stats"
+Common.SaveAndClose="Save && Close"
+```
+
+When you edit or add keys in an INI language file, values are written back as quoted
+`key="value"` lines.
 
 ## Keyboard shortcuts (inside the sidebar)
 
@@ -115,7 +126,7 @@ preserving your existing structure.
 
 | Setting                              | Description                                                                                                                | Default |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `LocaleSynci18n.translationsPath`       | Folder containing your `*.json` translation files (relative or abs.).                                                       | `""`    |
+| `LocaleSynci18n.translationsPath`       | Folder containing your `*.json` or `*.ini` translation files (relative or abs.).                                            | `""`    |
 | `LocaleSynci18n.defaultLanguage`        | The "source" language. Shown first and used as template for new langs.                                                     | `"en"`  |
 | `LocaleSynci18n.indent`                 | Spaces of indentation when writing JSON.                                                                                   | `2`     |
 | `LocaleSynci18n.aiTranslate.enabled`    | Show the AI translation buttons. When no language model provider is installed, the buttons are hidden automatically.       | `true`  |
@@ -160,9 +171,9 @@ npm run publish        # publishes to the marketplace (requires `vsce login`)
 
 ## Known limitations
 
-- Only `.json` files are supported (not `.yaml`, `.po`, `.properties`, etc.).
+- Only `.json` and `.ini` files are supported (not `.yaml`, `.po`, `.properties`, etc.).
 - Pluralization rules (CLDR plural categories) aren't handled, values are treated as plain strings.
-- Comments in JSON files aren't preserved (standard `JSON.parse` / `JSON.stringify`).
+- Comments in JSON files aren't preserved (standard `JSON.parse` / `JSON.stringify`); comments in INI files are not preserved when the file is rewritten.
 - AI translation quality depends on the underlying language model and the amount of context in the source string. Always review output for short or ambiguous keys.
 
 ## Changelog

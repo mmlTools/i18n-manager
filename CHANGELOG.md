@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support OBS-style `.ini` translation files alongside JSON. Locale folders can now be detected from `en-US.ini`, files are parsed as flat dotted keys like `Common.Scoreboard="Scoreboard"`, and edits are written back as quoted `key="value"` lines.
+
 ## [1.5.1] - 2026-05-11
 
 ### Added

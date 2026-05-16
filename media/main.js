@@ -3,7 +3,7 @@
 
   const vscode = acquireVsCodeApi();
 
-  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,flattened:Record<string,string>}>, keys:string[], defaultLanguage:string, aiAvailable:boolean, folderSuggestions?:Array<{folderPath:string,display:string,sampleLocales:string[],fileCount:number}>}} */
+  /** @type {{configured:boolean, folderPath:string, folderDisplay:string, languages:Array<{code:string,filePath:string,format:'json'|'ini',flattened:Record<string,string>}>, keys:string[], defaultLanguage:string, aiAvailable:boolean, folderSuggestions?:Array<{folderPath:string,display:string,sampleLocales:string[],fileCount:number}>}} */
   let state = {
     configured: false,
     folderPath: "",
@@ -170,7 +170,7 @@
         { class: "empty__desc" },
         state.folderPath
           ? `The configured path "${state.folderDisplay}" does not exist.`
-          : "Pick the folder where your i18n .json files live to get started.",
+          : "Pick the folder where your i18n .json or .ini files live to get started.",
       ),
     ];
 
@@ -293,7 +293,7 @@
             "span",
             {
               class: "lang-chip__remove",
-              title: `Delete ${lang.code}.json`,
+              title: `Delete ${lang.code}`,
               onClick: (e) => {
                 e.stopPropagation();
                 send("deleteLanguage", { code: lang.code });
@@ -850,7 +850,7 @@
           el(
             "div",
             { class: "field-help" },
-            "Will create <code>.json in your translations folder.",
+            "Will create a matching translation file in your translations folder.",
           ),
         ]),
         state.languages.length > 0

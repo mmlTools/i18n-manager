@@ -9,7 +9,7 @@ import {
 
 /**
  * Cached i18n state shared by hover/codelens/diagnostics so we don't reload
- * the JSON files on every keystroke. Refreshed on a debounce when files
+ * the translation files on every keystroke. Refreshed on a debounce when files
  * change or the configuration changes.
  */
 class StateCache {
@@ -269,9 +269,11 @@ export function registerLanguageFeatures(
       if (!def) return;
       const doc = await vscode.workspace.openTextDocument(def.filePath);
       const text = doc.getText();
-      // Search for "lastSegment" in the JSON. Imperfect but practical.
+      // Search for the full key first (works well for INI), then the last
+      // segment for nested JSON. Imperfect but practical.
       const last = key.split('.').pop() || key;
-      const idx = text.indexOf(`"${last}"`);
+      let idx = text.indexOf(key);
+      if (idx < 0) idx = text.indexOf(`"${last}"`);
       const editor = await vscode.window.showTextDocument(doc, { preview: false });
       if (idx >= 0) {
         const pos = doc.positionAt(idx);

@@ -44,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
     watcher?.dispose();
     const folder = i18nService.resolveFolderPath();
     if (folder) {
-      const pattern = new vscode.RelativePattern(folder, "*.json");
+      const pattern = new vscode.RelativePattern(folder, "*.{json,ini}");
       watcher = vscode.workspace.createFileSystemWatcher(pattern);
       watcher.onDidChange(() => {
         sidebarProvider.refresh();
@@ -463,8 +463,8 @@ async function createKeyFromSelection(
     return;
   }
 
-  let range: vscode.Range = editor.selection;
-  let raw = editor.document.getText(range);
+  const range: vscode.Range = editor.selection;
+  const raw = editor.document.getText(range);
   if (!raw || raw.trim() === "") {
     vscode.window.showInformationMessage(
       "Select the text you want a translation key for first.",

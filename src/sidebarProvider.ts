@@ -124,7 +124,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               await this._service.addLanguage(code, copyFrom);
               await this.sendState();
               vscode.window.setStatusBarMessage(
-                `i18n: created "${code}.json"`,
+                `i18n: created language "${code}"`,
                 3000,
               );
 
@@ -175,7 +175,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             }
             case "deleteLanguage": {
               const confirm = await vscode.window.showWarningMessage(
-                `Delete language file "${data.payload.code}.json"? This cannot be undone.`,
+                `Delete language file "${data.payload.code}"? This cannot be undone.`,
                 { modal: true },
                 "Delete",
               );

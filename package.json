@@ -2,7 +2,7 @@
   "name": "localesync-i18n",
   "displayName": "LocaleSync: i18n Data Manager",
   "description": "A clean sidebar control panel to manage your i18n translation files. Add keys to every language at once, create new language files, spot missing translations, translate with AI via GitHub Copilot.",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "publisher": "MMLTECH",
   "homepage": "https://streamrsc.com",
   "pricing": "Free",
@@ -132,7 +132,7 @@
         "LocaleSynci18n.translationsPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the folder containing translation .json files (relative to the workspace root or absolute)."
+          "description": "Path to the folder containing translation .json or .ini files (relative to the workspace root or absolute)."
         },
         "LocaleSynci18n.defaultLanguage": {
           "type": "string",
