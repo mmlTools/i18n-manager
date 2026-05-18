@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CodeIgniter 4 PHP language file support.** Point the extension at your `app/Language/` folder and it now understands the CI4 layout where each locale is a subdirectory (`en/`, `es/`, …) and each PHP file inside is a "group" (`Messages.php`, `Buttons.php`, …) returning an associative array. Keys are displayed in the sidebar as `Group.subkey` (e.g. `Messages.welcome`, `Buttons.warnLabel`) — the exact same shape used in `lang('Messages.welcome', ['name' => 'Alex'])`. The format is auto-detected from the folder layout and is also surfaced as a one-click suggestion in the empty state when an `app/Language/` folder is found in the workspace.
+  - Reading: a small recursive-descent PHP parser handles short-array (`[...]`) and long-array (`array(...)`) syntax, single- and double-quoted strings (with PHP escape rules), nested arrays, trailing commas, and `//` / `#` / `/* */` comments.
+  - Writing: keys are bucketed by their first dot-segment (the group → PHP filename) and the remaining dot-path is nested back into a PHP associative array. Group files that no longer contain any keys are deleted; new groups create new `.php` files automatically. Output uses short-array syntax with single-quoted strings (so PHP variables in placeholders like `$name` are not interpolated).
+  - Code integration: `lang('Group.key', ...)` is recognised everywhere a `t(...)` call is — hover preview, CodeLens, missing-key / empty-translation diagnostics, hardcoded-string detection, *Find Unused Keys*, *Rename Globally*, *Auto Namespace Refactor*, *AI Review Translations*, *Show Key References*, *Translate Selection* and *Create Translation Key from Selection (AI)*. PHP files are now scanned by all of these features.
 - Support OBS-style `.ini` translation files alongside JSON. Locale folders can now be detected from `en-US.ini`, files are parsed as flat dotted keys like `Common.Scoreboard="Scoreboard"`, and edits are written back as quoted `key="value"` lines.
 
 ## [1.5.1] - 2026-05-11

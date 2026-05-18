@@ -4,12 +4,24 @@ import * as fs from 'fs/promises';
 
 export interface LanguageData {
   code: string;
+  /**
+   * For `json`/`ini` formats: absolute path of the single translation file.
+   * For `php` (CodeIgniter 4) format: absolute path of the locale DIRECTORY
+   * (e.g. `app/Language/en`), which contains one `*.php` group file per
+   * top-level namespace (`Messages.php`, `Buttons.php`, ...).
+   */
   filePath: string;
   format: TranslationFormat;
   flattened: Record<string, string>;
+  /**
+   * For `php` format only: filenames (with `.php`) of the group files that
+   * existed on disk for this locale. Tracked so we can delete group files
+   * that become empty after a write.
+   */
+  groupFiles?: string[];
 }
 
-export type TranslationFormat = "json" | "ini";
+export type TranslationFormat = "json" | "ini" | "php";
 
 /**
  * A workspace folder that *looks* like a translations folder — it contains
@@ -47,6 +59,8 @@ export interface I18nState {
 
 export class I18nService {
   private static readonly SUPPORTED_EXTENSIONS = [".json", ".ini"] as const;
+  /** CodeIgniter 4 group filenames are valid PHP identifiers (e.g. `Messages.php`). */
+  private static readonly CI4_GROUP_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
   resolveFolderPath(): string | undefined {
     const config = vscode.workspace.getConfiguration("LocaleSynci18n");
@@ -285,7 +299,10 @@ export class I18nService {
     );
     const next = { ...target.flattened };
     next[key] = translation;
-    await this.writeLanguage(target.filePath, next);
+    await this.writeLanguage(target.filePath, next, {
+      format: target.format,
+      previousGroupFiles: target.groupFiles,
+    });
     return translation;
   }
 
@@ -330,7 +347,10 @@ export class I18nService {
       );
       const next = { ...target.flattened };
       next[key] = translation;
-      await this.writeLanguage(target.filePath, next);
+      await this.writeLanguage(target.filePath, next, {
+        format: target.format,
+        previousGroupFiles: target.groupFiles,
+      });
       translated++;
       progress?.report({ increment: step });
     }
@@ -459,7 +479,10 @@ export class I18nService {
       // do not write null entries; leave existing target values untouched.
     }
 
-    await this.writeLanguage(target.filePath, next);
+    await this.writeLanguage(target.filePath, next, {
+      format: target.format,
+      previousGroupFiles: target.groupFiles,
+    });
     return { translated, skipped, failed };
   }
 
@@ -637,7 +660,7 @@ export class I18nService {
     let uris: vscode.Uri[];
     try {
       uris = await vscode.workspace.findFiles(
-        "**/*.{json,ini}",
+        "**/*.{json,ini,php}",
         "**/{node_modules,out,dist,build,.next,.nuxt,coverage,.git,.svn,.hg,.idea,.vscode-test,.cache,vendor,target,bin,obj}/**",
         4000,
       );
@@ -647,10 +670,26 @@ export class I18nService {
 
     // Group locale-named translation files by their parent folder.
     const groups = new Map<string, string[]>();
+    // Track CI4 layouts: `Language/<locale>/<Group>.php` →
+    // parent (`Language`) → set of locale subdir names.
+    const ci4Groups = new Map<string, Set<string>>();
     for (const uri of uris) {
       if (uri.scheme !== "file") continue;
       const file = path.basename(uri.fsPath);
       const ext = path.extname(file).toLowerCase();
+      if (ext === ".php") {
+        // CI4: parent folder is the locale, grandparent is the Language root.
+        const localeDir = path.dirname(uri.fsPath);
+        const localeName = path.basename(localeDir);
+        if (!I18nService.LOCALE_NAME.test(localeName)) continue;
+        const groupName = path.basename(file, ".php");
+        if (!I18nService.CI4_GROUP_NAME.test(groupName)) continue;
+        const langRoot = path.dirname(localeDir);
+        const set = ci4Groups.get(langRoot) ?? new Set<string>();
+        set.add(localeName);
+        ci4Groups.set(langRoot, set);
+        continue;
+      }
       if (!I18nService.isSupportedExtension(ext)) continue;
       const stem = path.basename(file, ext);
       if (!I18nService.LOCALE_NAME.test(stem)) continue;
@@ -660,7 +699,7 @@ export class I18nService {
       groups.set(dir, list);
     }
 
-    if (groups.size === 0) return [];
+    if (groups.size === 0 && ci4Groups.size === 0) return [];
 
     const wsRoot = ws.uri.fsPath;
     const suggestions: FolderSuggestion[] = [];
@@ -675,6 +714,22 @@ export class I18nService {
         uniqueLocales.push(l);
       }
       uniqueLocales.sort((a, b) => a.localeCompare(b));
+      const display = this.toDisplayPath(folderPath);
+      suggestions.push({
+        folderPath,
+        display: display === "" ? "." : display,
+        sampleLocales: uniqueLocales.slice(0, 6),
+        fileCount: uniqueLocales.length,
+      });
+    }
+
+    // CodeIgniter 4 candidate folders: each locale appears as a subdirectory.
+    for (const [folderPath, localeSet] of ci4Groups) {
+      // Avoid duplicating a folder we already added as a flat suggestion.
+      if (groups.has(folderPath)) continue;
+      const uniqueLocales = Array.from(localeSet).sort((a, b) =>
+        a.localeCompare(b),
+      );
       const display = this.toDisplayPath(folderPath);
       suggestions.push({
         folderPath,
@@ -765,16 +820,70 @@ export class I18nService {
       };
     }
 
-    const files = await fs.readdir(folderPath);
+    const entries = await fs.readdir(folderPath, { withFileTypes: true });
     const languages: LanguageData[] = [];
 
-    for (const file of files) {
+    // Detect CodeIgniter 4 layout: `<folder>/<locale>/<Group>.php`. The locale
+    // is the subdirectory name; group files live one level deep. Activated
+    // when at least one locale-named subdirectory contains a `.php` file AND
+    // no flat-file translations are present at the root (we prefer flat mode
+    // when both shapes are mixed so existing setups keep working).
+    const hasFlatFiles = entries.some((e) => {
+      if (!e.isFile()) return false;
+      return I18nService.isSupportedExtension(path.extname(e.name).toLowerCase());
+    });
+    if (!hasFlatFiles) {
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const locale = entry.name;
+        if (!I18nService.LOCALE_NAME.test(locale)) continue;
+        const localeDir = path.join(folderPath, locale);
+        let phpFiles: string[];
+        try {
+          phpFiles = (await fs.readdir(localeDir)).filter(
+            (f) => path.extname(f).toLowerCase() === ".php",
+          );
+        } catch {
+          continue;
+        }
+        if (phpFiles.length === 0) continue;
+        const flattened: Record<string, string> = {};
+        for (const groupFile of phpFiles) {
+          const groupName = path.basename(groupFile, ".php");
+          if (!I18nService.CI4_GROUP_NAME.test(groupName)) continue;
+          const filePath = path.join(localeDir, groupFile);
+          try {
+            const content = await fs.readFile(filePath, "utf-8");
+            const parsed = this.parsePhpLangFile(content);
+            const flat = this.flatten(parsed);
+            for (const [k, v] of Object.entries(flat)) {
+              flattened[`${groupName}.${k}`] = v;
+            }
+          } catch (e) {
+            process.stderr.write(
+              `i18n Data Manager: failed to read ${path.join(locale, groupFile)}: ${
+                e instanceof Error ? (e.stack ?? e.message) : String(e)
+              }\n`,
+            );
+          }
+        }
+        languages.push({
+          code: locale,
+          filePath: localeDir,
+          format: "php",
+          flattened,
+          groupFiles: phpFiles,
+        });
+      }
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const file = entry.name;
       const ext = path.extname(file).toLowerCase();
       if (!I18nService.isSupportedExtension(ext)) continue;
       const filePath = path.join(folderPath, file);
       try {
-        const stat = await fs.stat(filePath);
-        if (!stat.isFile()) continue;
         const content = await fs.readFile(filePath, "utf-8");
         const format = ext === ".ini" ? "ini" : "json";
         const data =
@@ -870,10 +979,22 @@ export class I18nService {
   async writeLanguage(
     filePath: string,
     flat: Record<string, string>,
+    options?: { format?: TranslationFormat; previousGroupFiles?: string[] },
   ): Promise<void> {
-    const ext = path.extname(filePath).toLowerCase();
-    if (ext === ".ini") {
+    const format =
+      options?.format ??
+      (path.extname(filePath).toLowerCase() === ".ini"
+        ? "ini"
+        : path.extname(filePath).toLowerCase() === ".php"
+          ? "php"
+          : "json");
+
+    if (format === "ini") {
       await fs.writeFile(filePath, this.stringifyIni(flat), "utf-8");
+      return;
+    }
+    if (format === "php") {
+      await this.writePhpLocale(filePath, flat, options?.previousGroupFiles ?? []);
       return;
     }
     const nested = this.unflatten(flat);
@@ -882,16 +1003,95 @@ export class I18nService {
     await fs.writeFile(filePath, json + "\n", "utf-8");
   }
 
+  /**
+   * Write a CodeIgniter 4 locale directory: keys are grouped by their first
+   * dot-segment (the "group", which becomes the PHP filename), the remaining
+   * dot-path is nested back into a PHP associative array, and each group is
+   * written to `<localeDir>/<Group>.php`. Any previously-existing group files
+   * (passed via `previousGroupFiles`) that no longer contain any keys are
+   * deleted so the directory stays in sync with the in-memory state.
+   */
+  private async writePhpLocale(
+    localeDir: string,
+    flat: Record<string, string>,
+    previousGroupFiles: string[],
+  ): Promise<void> {
+    await fs.mkdir(localeDir, { recursive: true });
+
+    // Bucket keys by group (top-level segment).
+    const groups = new Map<string, Record<string, string>>();
+    for (const [k, v] of Object.entries(flat)) {
+      const dot = k.indexOf(".");
+      if (dot <= 0) {
+        // Skip keys without a group prefix — they can't be addressed in CI4
+        // (`lang('Group.key')` always requires a group). Surface a warning.
+        process.stderr.write(
+          `i18n Data Manager: skipping CI4 key without group prefix: "${k}"\n`,
+        );
+        continue;
+      }
+      const group = k.slice(0, dot);
+      if (!I18nService.CI4_GROUP_NAME.test(group)) {
+        process.stderr.write(
+          `i18n Data Manager: skipping CI4 key with invalid group "${group}": "${k}"\n`,
+        );
+        continue;
+      }
+      const rest = k.slice(dot + 1);
+      const bucket = groups.get(group) ?? {};
+      bucket[rest] = v;
+      groups.set(group, bucket);
+    }
+
+    const writtenGroupFiles = new Set<string>();
+    for (const [group, bucket] of groups) {
+      const nested = this.unflatten(bucket);
+      const content = this.stringifyPhpLangFile(nested);
+      const fileName = `${group}.php`;
+      await fs.writeFile(path.join(localeDir, fileName), content, "utf-8");
+      writtenGroupFiles.add(fileName);
+    }
+
+    // Remove any previously-existing group files that no longer carry keys.
+    for (const prev of previousGroupFiles) {
+      if (writtenGroupFiles.has(prev)) continue;
+      try {
+        await fs.unlink(path.join(localeDir, prev));
+      } catch {
+        // ignore missing files
+      }
+    }
+  }
+
   async addKey(key: string, values: Record<string, string>): Promise<void> {
     const trimmed = key.trim();
     if (!trimmed) throw new Error("Key cannot be empty.");
     const state = await this.loadState();
     if (state.languages.length === 0)
       throw new Error("No language files found. Create one first.");
+    // CodeIgniter 4 keys must include a group prefix (e.g. `Messages.welcome`)
+    // because the group maps to a PHP filename.
+    if (state.languages.some((l) => l.format === "php")) {
+      const dot = trimmed.indexOf(".");
+      if (dot <= 0) {
+        throw new Error(
+          'CodeIgniter 4 keys must be in the form "Group.key" (e.g. "Messages.welcome").',
+        );
+      }
+      const group = trimmed.slice(0, dot);
+      if (!I18nService.CI4_GROUP_NAME.test(group)) {
+        throw new Error(
+          `"${group}" is not a valid CI4 group name. Use letters, digits and underscores; start with a letter or underscore.`,
+        );
+      }
+    }
     for (const lang of state.languages) {
       const next = { ...lang.flattened };
       next[trimmed] = values[lang.code] ?? "";
-      await this.writeLanguage(lang.filePath, next);
+      await this.writeLanguage(lang.filePath, next, {
+        format: lang.format,
+        previousGroupFiles: lang.groupFiles,
+      });
     }
   }
 
@@ -905,7 +1105,10 @@ export class I18nService {
     if (!lang) throw new Error(`Language "${languageCode}" not found.`);
     const next = { ...lang.flattened };
     next[key] = value;
-    await this.writeLanguage(lang.filePath, next);
+    await this.writeLanguage(lang.filePath, next, {
+      format: lang.format,
+      previousGroupFiles: lang.groupFiles,
+    });
   }
 
   async deleteKey(key: string): Promise<void> {
@@ -914,7 +1117,10 @@ export class I18nService {
       if (key in lang.flattened) {
         const next = { ...lang.flattened };
         delete next[key];
-        await this.writeLanguage(lang.filePath, next);
+        await this.writeLanguage(lang.filePath, next, {
+          format: lang.format,
+          previousGroupFiles: lang.groupFiles,
+        });
       }
     }
   }
@@ -929,7 +1135,10 @@ export class I18nService {
       if (oldKey in next) {
         next[trimmed] = next[oldKey];
         delete next[oldKey];
-        await this.writeLanguage(lang.filePath, next);
+        await this.writeLanguage(lang.filePath, next, {
+          format: lang.format,
+          previousGroupFiles: lang.groupFiles,
+        });
       }
     }
   }
@@ -946,8 +1155,34 @@ export class I18nService {
     const folder = state.folderPath;
     if (!folder) throw new Error("No translations folder is configured.");
     const format = this.pickNewLanguageFormat(state, copyFrom);
-    const filePath = path.join(folder, `${trimmed}.${format}`);
 
+    const source =
+      (copyFrom && state.languages.find((l) => l.code === copyFrom)) ||
+      state.languages.find((l) => l.code === state.defaultLanguage) ||
+      state.languages[0];
+
+    if (format === "php") {
+      // CodeIgniter 4: each locale is a SUBDIRECTORY with one PHP file per
+      // group. Refuse to overwrite an existing locale directory.
+      const localeDir = path.join(folder, trimmed);
+      try {
+        const stat = await fs.stat(localeDir);
+        if (stat.isDirectory()) {
+          throw new Error(`Language "${trimmed}" already exists.`);
+        }
+      } catch (e: unknown) {
+        const err = e as NodeJS.ErrnoException;
+        if (err.code !== "ENOENT") throw e;
+      }
+      const data: Record<string, string> = {};
+      if (source) {
+        for (const k of Object.keys(source.flattened)) data[k] = "";
+      }
+      await this.writeLanguage(localeDir, data, { format: "php", previousGroupFiles: [] });
+      return;
+    }
+
+    const filePath = path.join(folder, `${trimmed}.${format}`);
     try {
       await fs.access(filePath);
       throw new Error(`Language "${trimmed}" already exists.`);
@@ -957,20 +1192,21 @@ export class I18nService {
     }
 
     const data: Record<string, string> = {};
-    const source =
-      (copyFrom && state.languages.find((l) => l.code === copyFrom)) ||
-      state.languages.find((l) => l.code === state.defaultLanguage) ||
-      state.languages[0];
     if (source) {
       for (const k of Object.keys(source.flattened)) data[k] = "";
     }
-    await this.writeLanguage(filePath, data);
+    await this.writeLanguage(filePath, data, { format });
   }
 
   async deleteLanguage(code: string): Promise<void> {
     const state = await this.loadState();
     const lang = state.languages.find((l) => l.code === code);
     if (!lang) throw new Error(`Language "${code}" not found.`);
+    if (lang.format === "php") {
+      // Locale directory — remove recursively.
+      await fs.rm(lang.filePath, { recursive: true, force: true });
+      return;
+    }
     await fs.unlink(lang.filePath);
   }
 
@@ -987,7 +1223,10 @@ export class I18nService {
         }
       }
       if (changed) {
-        await this.writeLanguage(lang.filePath, next);
+        await this.writeLanguage(lang.filePath, next, {
+          format: lang.format,
+          previousGroupFiles: lang.groupFiles,
+        });
         writes++;
       }
     }
@@ -1040,7 +1279,10 @@ export class I18nService {
           next[k] = v;
         }
       }
-      if (changed) await this.writeLanguage(lang.filePath, next);
+      if (changed) await this.writeLanguage(lang.filePath, next, {
+        format: lang.format,
+        previousGroupFiles: lang.groupFiles,
+      });
     }
     return mapping;
   }
@@ -1060,7 +1302,10 @@ export class I18nService {
           changed = true;
         }
       }
-      if (changed) await this.writeLanguage(lang.filePath, next);
+      if (changed) await this.writeLanguage(lang.filePath, next, {
+        format: lang.format,
+        previousGroupFiles: lang.groupFiles,
+      });
     }
   }
 
@@ -1227,5 +1472,289 @@ export class I18nService {
       state.languages.find((l) => l.code === state.defaultLanguage) ||
       state.languages[0];
     return source?.format ?? "json";
+  }
+
+  // ─── CodeIgniter 4 PHP language files ───────────────────────
+
+  /**
+   * Parse a CodeIgniter 4 language file:
+   *
+   *     <?php
+   *     return [
+   *         'welcome'   => 'Welcome back, {name}!',
+   *         'itemCount' => 'There are {0, number} items in your cart.',
+   *     ];
+   *
+   * Supports `[...]` and `array(...)` syntax, single- and double-quoted
+   * strings (with PHP escape rules), nested arrays, trailing commas, and `//`,
+   * `#`, `/* ... *​/` comments. Returns the associative array as a plain JS
+   * object so `flatten()` can take it from there.
+   */
+  parsePhpLangFile(content: string): Record<string, unknown> {
+    const parser = new PhpLangParser(content);
+    return parser.parseFile();
+  }
+
+  /**
+   * Render a JS object back to a CodeIgniter 4 language file. Uses short-array
+   * syntax (`[...]`), single-quoted strings (so embedded placeholders like
+   * `$name` aren't interpolated by PHP), and 4-space indentation.
+   */
+  stringifyPhpLangFile(value: unknown): string {
+    return `<?php\n\nreturn ${this.renderPhpValue(value, 0)};\n`;
+  }
+
+  private renderPhpValue(v: unknown, depth: number): string {
+    if (v === null || v === undefined) return "null";
+    if (typeof v === "boolean") return v ? "true" : "false";
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+    if (typeof v === "string") return this.phpQuote(v);
+    if (Array.isArray(v)) {
+      if (v.length === 0) return "[]";
+      const indent = "    ".repeat(depth + 1);
+      const close = "    ".repeat(depth);
+      const lines = v.map((item) => `${indent}${this.renderPhpValue(item, depth + 1)},`);
+      return `[\n${lines.join("\n")}\n${close}]`;
+    }
+    if (typeof v === "object") {
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (entries.length === 0) return "[]";
+      const indent = "    ".repeat(depth + 1);
+      const close = "    ".repeat(depth);
+      const keyWidth = Math.min(
+        40,
+        entries.reduce((m, [k]) => Math.max(m, this.phpQuote(k).length), 0),
+      );
+      const lines = entries.map(([k, val]) => {
+        const quoted = this.phpQuote(k);
+        const pad = quoted.length < keyWidth ? " ".repeat(keyWidth - quoted.length) : "";
+        return `${indent}${quoted}${pad} => ${this.renderPhpValue(val, depth + 1)},`;
+      });
+      return `[\n${lines.join("\n")}\n${close}]`;
+    }
+    return "null";
+  }
+
+  /** Wrap a string in single quotes with PHP-style escaping (`\\` and `\'`). */
+  private phpQuote(s: string): string {
+    return `'${s.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  }
+}
+
+/**
+ * Minimal recursive-descent parser for CodeIgniter 4 PHP language files.
+ * Only the subset of PHP that legitimately appears in those files is
+ * supported (strings, numbers, booleans, null, arrays). Anything else throws.
+ */
+class PhpLangParser {
+  private i = 0;
+
+  constructor(private readonly src: string) {}
+
+  parseFile(): Record<string, unknown> {
+    this.skipWhitespaceAndComments();
+    // Skip a leading `<?php` (or `<?=`) tag if present.
+    if (this.src.startsWith("<?php", this.i)) this.i += 5;
+    else if (this.src.startsWith("<?", this.i)) this.i += 2;
+
+    // Scan forward for the first top-level `return` keyword.
+    while (this.i < this.src.length) {
+      this.skipWhitespaceAndComments();
+      if (this.match("return") && this.isWordBoundary(this.i + 6)) {
+        this.i += 6;
+        this.skipWhitespaceAndComments();
+        const value = this.parseValue();
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          throw new Error(
+            "CodeIgniter 4 language file must `return [ ... ]` an associative array.",
+          );
+        }
+        return value as Record<string, unknown>;
+      }
+      this.i++;
+    }
+    throw new Error("Could not find a `return [ ... ];` statement in language file.");
+  }
+
+  private match(word: string): boolean {
+    return this.src.startsWith(word, this.i);
+  }
+
+  private isWordBoundary(pos: number): boolean {
+    if (pos >= this.src.length) return true;
+    return !/[A-Za-z0-9_]/.test(this.src[pos]);
+  }
+
+  private skipWhitespaceAndComments(): void {
+    while (this.i < this.src.length) {
+      const c = this.src[this.i];
+      if (c === " " || c === "\t" || c === "\n" || c === "\r") {
+        this.i++;
+        continue;
+      }
+      if (c === "/" && this.src[this.i + 1] === "/") {
+        while (this.i < this.src.length && this.src[this.i] !== "\n") this.i++;
+        continue;
+      }
+      if (c === "#" && this.src[this.i + 1] !== "[") {
+        // `#[...]` is a PHP attribute (unlikely in lang files); plain `#` is a comment.
+        while (this.i < this.src.length && this.src[this.i] !== "\n") this.i++;
+        continue;
+      }
+      if (c === "/" && this.src[this.i + 1] === "*") {
+        this.i += 2;
+        while (
+          this.i < this.src.length &&
+          !(this.src[this.i] === "*" && this.src[this.i + 1] === "/")
+        ) {
+          this.i++;
+        }
+        this.i += 2;
+        continue;
+      }
+      return;
+    }
+  }
+
+  private parseValue(): unknown {
+    this.skipWhitespaceAndComments();
+    const c = this.src[this.i];
+    if (c === undefined) throw new Error("Unexpected end of file");
+    if (c === "'" || c === '"') return this.parseString();
+    if (c === "[") return this.parseArray("]");
+    if (this.match("array") && this.isWordBoundary(this.i + 5)) {
+      this.i += 5;
+      this.skipWhitespaceAndComments();
+      if (this.src[this.i] !== "(") {
+        throw new Error(`Expected "(" after array at offset ${this.i}`);
+      }
+      this.i++;
+      return this.parseArrayBody(")");
+    }
+    if (this.match("true") && this.isWordBoundary(this.i + 4)) {
+      this.i += 4;
+      return true;
+    }
+    if (this.match("false") && this.isWordBoundary(this.i + 5)) {
+      this.i += 5;
+      return false;
+    }
+    if (this.match("null") && this.isWordBoundary(this.i + 4)) {
+      this.i += 4;
+      return null;
+    }
+    const numMatch = /^-?\d+(?:\.\d+)?/.exec(this.src.slice(this.i));
+    if (numMatch) {
+      this.i += numMatch[0].length;
+      return parseFloat(numMatch[0]);
+    }
+    throw new Error(
+      `Unexpected token at offset ${this.i}: "${this.src.slice(this.i, this.i + 20)}"`,
+    );
+  }
+
+  private parseString(): string {
+    const quote = this.src[this.i];
+    this.i++;
+    let out = "";
+    while (this.i < this.src.length) {
+      const c = this.src[this.i];
+      if (c === quote) {
+        this.i++;
+        return out;
+      }
+      if (c === "\\") {
+        const next = this.src[this.i + 1];
+        if (quote === "'") {
+          // Single-quoted: only `\\` and `\'` are escapes; everything else is literal.
+          if (next === "\\" || next === "'") {
+            out += next;
+            this.i += 2;
+          } else {
+            out += "\\";
+            this.i++;
+          }
+        } else {
+          // Double-quoted: handle common escapes; ignore variable interpolation.
+          switch (next) {
+            case "n":
+              out += "\n";
+              break;
+            case "t":
+              out += "\t";
+              break;
+            case "r":
+              out += "\r";
+              break;
+            case "\\":
+              out += "\\";
+              break;
+            case '"':
+              out += '"';
+              break;
+            case "$":
+              out += "$";
+              break;
+            case "0":
+              out += "\0";
+              break;
+            default:
+              out += next ?? "";
+              break;
+          }
+          this.i += 2;
+        }
+        continue;
+      }
+      out += c;
+      this.i++;
+    }
+    throw new Error("Unterminated string literal");
+  }
+
+  private parseArray(close: string): Record<string, unknown> | unknown[] {
+    this.i++; // consume opening `[`
+    return this.parseArrayBody(close);
+  }
+
+  private parseArrayBody(close: string): Record<string, unknown> | unknown[] {
+    const assoc: Record<string, unknown> = {};
+    const list: unknown[] = [];
+    let isAssoc = false;
+    while (true) {
+      this.skipWhitespaceAndComments();
+      if (this.src[this.i] === close) {
+        this.i++;
+        break;
+      }
+      const first = this.parseValue();
+      this.skipWhitespaceAndComments();
+      if (this.src[this.i] === "=" && this.src[this.i + 1] === ">") {
+        this.i += 2;
+        this.skipWhitespaceAndComments();
+        const value = this.parseValue();
+        if (typeof first !== "string" && typeof first !== "number") {
+          throw new Error("Array key must be a string or number");
+        }
+        assoc[String(first)] = value;
+        isAssoc = true;
+      } else {
+        list.push(first);
+      }
+      this.skipWhitespaceAndComments();
+      if (this.src[this.i] === ",") {
+        this.i++;
+        continue;
+      }
+      if (this.src[this.i] === close) {
+        this.i++;
+        break;
+      }
+      throw new Error(
+        `Expected "," or "${close}" at offset ${this.i}; saw "${this.src.slice(this.i, this.i + 10)}"`,
+      );
+    }
+    if (isAssoc) return assoc;
+    return list;
   }
 }

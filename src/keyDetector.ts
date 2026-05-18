@@ -35,6 +35,8 @@ const KEY_PATTERNS: RegExp[] = [
   /\btranslate\s*\(\s*(['"`])([A-Za-z0-9_$][A-Za-z0-9_$.\-:/]*)\1/g,
   // Pipe-style: 'key' | translate
   /(['"`])([A-Za-z0-9_$][A-Za-z0-9_$.\-:/]*)\1\s*\|\s*translate\b/g,
+  // CodeIgniter 4: lang('Group.key') — the dot between group and key is required.
+  /\blang\s*\(\s*(['"])([A-Za-z_][A-Za-z0-9_]*\.[A-Za-z0-9_$.\-:/]+)\1/g,
 ];
 
 /** Default file selectors that the integration features apply to. */
@@ -46,6 +48,7 @@ export const DEFAULT_SELECTORS: vscode.DocumentSelector = [
   { scheme: 'file', language: 'vue' },
   { scheme: 'file', language: 'svelte' },
   { scheme: 'file', language: 'html' },
+  { scheme: 'file', language: 'php' },
 ];
 
 /** True when the document is one we should scan for keys. */
@@ -59,6 +62,7 @@ export function isSupportedDocument(doc: vscode.TextDocument): boolean {
     'vue',
     'svelte',
     'html',
+    'php',
   ]);
   return allowed.has(doc.languageId);
 }
@@ -118,7 +122,7 @@ export interface HardcodedString {
 const STRING_LITERAL = /(['"`])((?:\\.|(?!\1)[^\\])*?)\1/g;
 const JSX_TEXT = />([^<>{}\n][^<>{}]{1,200})</g;
 
-const NON_UI_PARENT = /(?:\bimport\b|\brequire\b|\bconsole\.[a-z]+|\bthrow new\s+\w+|\b(?:i18next|i18n)\s*\.\s*)?\$?\bt\s*\(\s*$|\bi18nKey\s*=\s*$|\btranslate\s*\(\s*$/;
+const NON_UI_PARENT = /(?:\bimport\b|\brequire\b|\bconsole\.[a-z]+|\bthrow new\s+\w+|\b(?:i18next|i18n)\s*\.\s*)?\$?\bt\s*\(\s*$|\bi18nKey\s*=\s*$|\btranslate\s*\(\s*$|\blang\s*\(\s*$/;
 const URL_OR_PATH = /^(?:https?:|file:|mailto:|\/|\.\/|\.\.\/|[a-z]+:\/\/)/i;
 const LOOKS_LIKE_PROP = /^[a-z][a-zA-Z0-9_-]*$/;
 const HAS_LETTER_AND_SPACE = /[A-Za-z].*\s.*[A-Za-z]/;

@@ -39,7 +39,10 @@
     "locale",
     "i18next",
     "ai",
-    "copilot"
+    "copilot",
+    "php",
+    "codeigniter",
+    "codeigniter4"
   ],
   "galleryBanner": {
     "color": "#4F46E5",
@@ -132,7 +135,7 @@
         "LocaleSynci18n.translationsPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the folder containing translation .json or .ini files (relative to the workspace root or absolute)."
+          "description": "Path to the folder containing your translation files (relative to the workspace root or absolute). Supports flat JSON/INI files (e.g. en.json, en-US.ini) and CodeIgniter 4 PHP language folders (e.g. app/Language/ with en/Messages.php, es/Messages.php, ...)."
         },
         "LocaleSynci18n.defaultLanguage": {
           "type": "string",
@@ -191,7 +194,7 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vscode/vsce": "^3.9.1",
-    "eslint": "^8.57.0",
+    "eslint": "^10.4.0",
     "typescript": "^5.3.0"
   }
 }

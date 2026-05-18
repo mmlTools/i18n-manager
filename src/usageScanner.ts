@@ -9,8 +9,8 @@ export interface WorkspaceUsageIndex {
   filesScanned: number;
 }
 
-const SCAN_GLOB = '**/*.{ts,tsx,js,jsx,vue,svelte,html,htm,mts,cts,mjs,cjs}';
-const EXCLUDE_GLOB = '**/{node_modules,out,dist,build,.next,.nuxt,coverage,.git}/**';
+const SCAN_GLOB = '**/*.{ts,tsx,js,jsx,vue,svelte,html,htm,mts,cts,mjs,cjs,php}';
+const EXCLUDE_GLOB = '**/{node_modules,out,dist,build,.next,.nuxt,coverage,.git,vendor}/**';
 
 /**
  * Scan the workspace for translation-key references. Honors VS Code's
